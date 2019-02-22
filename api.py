@@ -5,17 +5,20 @@ This is the apis of searching the answer.
 """
 
 __author__ = "yanyongyu"
-__all__ = ["cxmool_tool", "poxiaobbs", "forestpolice", "bankroft"]
+__all__ = ["cxmooc_tool", "poxiaobbs", "forestpolice", "bankroft"]
 
 import time
+import logging
 from hashlib import md5
 
 from lxml import etree
 import requests
 
+logging.basicConfig(level=logging.INFO)
 
-def cxmool_tool(sess: requests.Session,
-                *args: list) -> list:
+
+async def cxmooc_tool(sess: requests.Session,
+                      *args: list) -> list:
     # 输入参数处理
     if not isinstance(sess, requests.Session):
         args = list(args)
@@ -32,9 +35,11 @@ def cxmool_tool(sess: requests.Session,
         data['topic[%d]' % i] = args[i]
 
     # post请求
+    logging.info("Post to cxmooc_tool api.")
     res = sess.post(url, data=data, verify=False)
 
     # 处理结果
+    logging.info("Processing result")
     result = []
     if res.status_code == 200:
         for each in res.json():
@@ -46,11 +51,13 @@ def cxmool_tool(sess: requests.Session,
                 answer.append(temp)
             result.append(answer)
 
+    logging.info("Return result: %s" % result)
+
     return result
 
 
-def poxiaobbs(sess: requests.Session,
-              *args: list) -> list:
+async def poxiaobbs(sess: requests.Session,
+                    *args: list) -> list:
     # 输入参数处理
     if not isinstance(sess, requests.Session):
         args = list(args)
@@ -68,9 +75,11 @@ def poxiaobbs(sess: requests.Session,
         data['tm'] = args[i]
 
         # post请求
+        logging.info("Post to poxiao bbs php. Question %d" % i)
         res = sess.post(url, data=data, verify=False)
 
         # 处理结果
+        logging.info("Processing result")
         answer = []
         if res.status_code == 200:
             temp = {}
@@ -82,15 +91,17 @@ def poxiaobbs(sess: requests.Session,
                 temp['topic'] = answer_text.split("答案：")[0]
                 temp['correct'] = answer_text.split("答案：")[1]
                 answer.append(temp)
-        result.append[answer]
+        result.append(answer)
 
         time.sleep(0.5)
+
+    logging.info("Return result: %s" % result)
 
     return result
 
 
-def forestpolice(sess: requests.Session,
-                 *args: list) -> list:
+async def forestpolice(sess: requests.Session,
+                       *args: list) -> list:
     # 输入参数处理
     if not isinstance(sess, requests.Session):
         args = list(args)
@@ -110,9 +121,11 @@ def forestpolice(sess: requests.Session,
         data['option'] = ""
 
         # post请求
+        logging.info("Post to forest police. Question %d" % i)
         res = sess.post(url + args[i], data=data, verify=False)
 
         # 处理结果
+        logging.info("Processing result")
         answer = []
         if res.status_code == 200:
             temp = {}
@@ -123,11 +136,13 @@ def forestpolice(sess: requests.Session,
 
         time.sleep(0.5)
 
+    logging.info("Return result: %s" % result)
+
     return result
 
 
-def bankroft(sess: requests.Session,
-             *args: list) -> list:
+async def bankroft(sess: requests.Session,
+                   *args: list) -> list:
     """
     该接口只有当题目完整时可用！
     并且有频率限制！
@@ -154,9 +169,11 @@ def bankroft(sess: requests.Session,
         payload['enc'] = md.hexdigest()
 
         # post请求
+        logging.info("Get bankroft api. Question %d" % i)
         res = sess.get(url, params=payload, verify=False)
 
         # 处理结果
+        logging.info("Processing result")
         answer = []
         if res.status_code == 200:
             json_text = res.json()
@@ -179,5 +196,7 @@ def bankroft(sess: requests.Session,
         result.append(answer)
 
         time.sleep(0.5)
+
+    logging.info("Return result: %s" % result)
 
     return result

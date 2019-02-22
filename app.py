@@ -9,6 +9,7 @@ __author__ = "yanyongyu"
 import asyncio
 import threading
 
+import requests
 from tkinter import *
 from tkinter.ttk import *
 
@@ -16,6 +17,7 @@ from tkinter.ttk import *
 class App():
 
     def __init__(self):
+        # 加载api
         self.api_list = {}
         model = __import__("api", globals(), locals())
         for attr in dir(model):
@@ -25,6 +27,12 @@ class App():
             if callable(fn):
                 if getattr(fn, '__annotations__', None):
                     self.api_list[attr] = fn
+
+        # 初始化session
+        self.sess = requests.Session()
+
+        # 答案显示窗口list
+        self.toplevel_list = []
 
     def show(self):
         self.root = Tk()
@@ -49,8 +57,8 @@ class App():
         label1.pack(side=LEFT, fill=BOTH)
         options = list(self.api_list.keys())
         options.insert(0, "自动选择")
-        v1 = StringVar()
-        menu1 = OptionMenu(frame1, v1, options[0], *options)
+        self.v1 = StringVar()
+        menu1 = OptionMenu(frame1, self.v1, options[0], *options)
         menu1.pack(side=RIGHT, fill=BOTH)
         label2 = Label(frame1, text="选择题库来源:")
         label2.pack(padx=3, side=RIGHT, fill=BOTH)
@@ -71,17 +79,31 @@ class App():
 
     async def search(self):
         text = self.text1.get(1.0, END).strip(' \n\r').split()
-        print(text)
         for each in text:
             await self.show_result(each)
+        if self.v1.get() == "自动选择":
+            pass
+        else:
+            result = await self.api_list[self.v1.get()](self.sess, *text)
+            for i in range(len(text)):
+                label1 = self.toplevel_list[0].children['!label']
+                label2 = self.toplevel_list[0].children['!label2']
+                if not result[i]:
+                    label1['text'] = label1['text'] + "未查询到答案"
+                    label2['text'] = label2['text'] + "未查询到答案"
+                else:
+                    label1['text'] = label1['text'] + str(result[i][0]['topic'])
+                    label2['text'] = label2['text'] + str(result[i][0]['correct'])
+                self.toplevel_list.pop(0)
 
     async def show_result(self, text):
         top = Toplevel(self.root)
         top.geometry('400x300')
-        label1 = Label(top, text="查询中...")
+        label1 = Label(top, text="查询中...\n")
         label1.pack(side=TOP, fill=BOTH)
-        label2 = Label(top, text="答案：")
+        label2 = Label(top, text="答案：\n")
         label2.pack(side=BOTTOM, fill=BOTH)
+        self.toplevel_list.append(top)
 
     def start_loop(self, loop):
         asyncio.set_event_loop(self.loop)
