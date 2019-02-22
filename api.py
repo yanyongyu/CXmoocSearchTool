@@ -183,14 +183,14 @@ async def bankroft(sess: requests.Session,
                 temp['correct'] = json_text['data']
                 answer.append(temp)
             elif json_text['code'] == 101:
+                print(json_text)
                 temp = {}
-                temp['topic'] = args[i]\
-                    + "\n题目输入不完整！该接口需要除题目类型外完整题目"
+                temp['topic'] = "题目输入不完整！bankroft接口需要除题目类型外完整题目\n"
                 temp['correct'] = ""
                 answer.append(temp)
             else:
                 temp = {}
-                temp['topic'] = args[i] + "\n该接口查询次数已达上限！"
+                temp['topic'] = "bankroft接口查询次数已达上限！\n"
                 temp['correct'] = ""
                 answer.append(temp)
         result.append(answer)

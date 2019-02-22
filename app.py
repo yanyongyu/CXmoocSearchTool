@@ -82,7 +82,24 @@ class App():
         for each in text:
             await self.show_result(each)
         if self.v1.get() == "自动选择":
-            pass
+            for each in self.api_list.keys():
+                if text:
+                    index = 0
+                    result = await self.api_list[each](self.sess, *text)
+                    for i in range(len(text)):
+                        label1 = self.toplevel_list[index].children['!label']
+                        label2 = self.toplevel_list[index].children['!label2']
+                        if not result:
+                            label1['text'] = label1['text'] + "源%s未查询到答案\n" % each
+                            index += 1
+                        elif not result[i][0]['correct']:
+                            label1['text'] = label1['text'] + result[i][0]['topic']
+                            index += 1
+                        else:
+                            label1['text'] = label1['text'] + str(result[i][0]['topic'])
+                            label2['text'] = label2['text'] + str(result[i][0]['correct'])
+                            self.toplevel_list.pop(0)
+                            text.pop(index)
         else:
             result = await self.api_list[self.v1.get()](self.sess, *text)
             for i in range(len(text)):
