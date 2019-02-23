@@ -200,3 +200,11 @@ async def bankroft(sess: requests.Session,
     logging.info("Return result: %s" % result)
 
     return result
+
+
+def cmd():
+    pass
+
+
+if __name__ == "__main__":
+    cmd()
