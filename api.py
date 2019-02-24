@@ -87,10 +87,10 @@ async def poxiaobbs(sess: requests.Session,
         logging.info("Processing result")
         answer = []
         if res.status_code == 200:
-            temp = {}
             selector = etree.HTML(res.text)
-            answer_div = selector.xpath('//div[@class="ans"]')
+            answer_div = selector.xpath('/html/body/div[1]/div[@class="ans"]')
             for each in answer_div:
+                temp = {}
                 answer_text = each.xpath('string(.)')\
                     .strip().replace('  ', '').replace('\n', '')
                 if "答案：" in answer_text:
@@ -262,7 +262,9 @@ async def cmd():
                 else:
                     answer.append(result[i])
 
+#        print(answer)
         print(json.dumps(answer))
+#        json.dump(answer, open("anwser.json", "w"))
 
 
 if __name__ == "__main__":

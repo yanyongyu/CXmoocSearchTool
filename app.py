@@ -87,6 +87,15 @@ class App():
         vbar_y.config(command=self.text1.yview)
         self.text1.configure(yscrollcommand=vbar_y.set)
 
+        # 界面鼠标滚动
+        def _scroll_text(event):
+            self.text1.yview_scroll(int(-event.delta / 60), 'units')
+
+        def _unscroll_text(event):
+            return 'break'
+
+        self.text1.bind('<MouseWheel>', _scroll_text)
+
         # 查询按钮框
         frame3 = Frame(self.root, style='White.TFrame')
         frame3.pack(side=BOTTOM, fill=X)
@@ -96,16 +105,19 @@ class App():
         self.root.update()
         self.root.mainloop()
 
-    async def search(self):
+    def start_search(self):
         text = self.text1.get(1.0, END).strip(' \n\r').split()
         for each in text:
-            await self.show_result(each)
+            self.show_toplevel()
+        self.start_coroutine(self.search())
+
+    async def search(self):
+        text = self.text1.get(1.0, END).strip(' \n\r').split()
         if self.v1.get() == "自动选择":
             for each in self.api_list.keys():
                 if text:
                     index = 0
                     for toplevel in self.toplevel_list:
-                        print(toplevel.children)
                         label = toplevel.children['!canvas'].children['!frame'].children['!label']
                         label['text'] = label['text'] + "查询中。。。使用源%s\n" % each
                     result = await self.api_list[each](self.sess, *text)
@@ -136,7 +148,7 @@ class App():
                         label['text'] = label['text'] + '答案:' + each['correct'] + '\n'
                 self.toplevel_list.pop(0)
 
-    async def show_result(self, text):
+    def show_toplevel(self):
         top = Toplevel(self.root)
         top.geometry('400x300')
         top.resizable(False, False)
@@ -146,7 +158,7 @@ class App():
         canvas.pack(side=LEFT, fill=BOTH, expand=True)
         frame = Frame(canvas)
         frame_id = canvas.create_window(0, 0, window=frame, anchor=NW)
-        label1 = Label(frame, text="", wraplength=400)
+        label1 = Label(frame, text="", wraplength=380)
         label1.pack(side=TOP, fill=BOTH)
 
         vbar = AutoShowScrollbar(top, orient=VERTICAL)
@@ -181,14 +193,12 @@ class App():
         frame.bind('<Configure>', _configure_frame)
         canvas.bind('<Configure>', _configure_canvas)
         canvas.bind_all('<MouseWheel>', _scroll_canvas)
-        return
 
     def start_loop(self, loop):
         asyncio.set_event_loop(self.loop)
         self.loop.run_forever()
 
-    def start_search(self):
-        coroutine = self.search()
+    def start_coroutine(self, coroutine):
         new_loop = asyncio.new_event_loop()
         self.loop = new_loop
         t = threading.Thread(target=self.start_loop, args=(new_loop,))
