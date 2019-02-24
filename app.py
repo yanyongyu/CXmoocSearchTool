@@ -18,6 +18,17 @@ from tkinter.ttk import *
 import api
 
 
+class AutoShowScrollbar(Scrollbar):
+    # 如果不需要滚动条则会自动隐藏
+    def set(self, lo, hi):
+        if float(lo) <= 0.0 and float(hi) >= 1.0:
+            # grid_remove is currently missing from Tkinter!
+            self.tk.call("pack", "forget", self)
+        else:
+            self.pack(fill=Y,side=RIGHT,expand=False)
+        Scrollbar.set(self, lo, hi)
+
+
 class App():
 
     def __init__(self):
@@ -56,7 +67,7 @@ class App():
         # 提示框
         frame1 = Frame(self.root)
         frame1.pack(side=TOP, fill=X)
-        label1 = Label(frame1, text="请将题目复制到下方输入框，每行一道题（不带题型）")
+        label1 = Label(frame1, text="请将题目复制到下方输入框，每一行一道题（不带题型）, 题目过长自动换行不影响")
         label1.pack(side=LEFT, fill=BOTH)
         options = list(self.api_list.keys())
         options.insert(0, "自动选择")
@@ -70,8 +81,13 @@ class App():
         frame2 = Frame(self.root, style='White.TFrame')
         frame2.pack(side=TOP, fill=BOTH)
         self.text1 = Text(frame2, height=19, borderwidth=3, font=('微软雅黑', 15))
-        self.text1.pack(padx=2, pady=5, side=TOP, fill=BOTH)
+        self.text1.pack(padx=2, pady=5, side=LEFT, fill=BOTH, expand=True)
+        vbar_y = AutoShowScrollbar(frame2, orient=VERTICAL)
+        vbar_y.pack(fill=Y, side=RIGHT, expand=False)
+        vbar_y.config(command=self.text1.yview)
+        self.text1.configure(yscrollcommand=vbar_y.set)
 
+        # 查询按钮框
         frame3 = Frame(self.root, style='White.TFrame')
         frame3.pack(side=BOTTOM, fill=X)
         button1 = Button(frame3, text="查询", command=self.start_search, style='TButton')
@@ -88,42 +104,84 @@ class App():
             for each in self.api_list.keys():
                 if text:
                     index = 0
-                    label = self.toplevel_list[index].children['!label']
-                    label['text'] = label['text'] + "查询中。。。使用源%s\n" % each
+                    for toplevel in self.toplevel_list:
+                        print(toplevel.children)
+                        label = toplevel.children['!canvas'].children['!frame'].children['!label']
+                        label['text'] = label['text'] + "查询中。。。使用源%s\n" % each
                     result = await self.api_list[each](self.sess, *text)
                     for i in range(len(text)):
+                        label = self.toplevel_list[index].children['!canvas'].children['!frame'].children['!label']
                         if not result[i]:
                             label['text'] = label1['text'] + "源%s未查询到答案\n" % each
                             index += 1
                         else:
                             for each in result[i]:
                                 if not each['correct']:
-                                    label['text'] = label['text'] + each['topic\n']
+                                    label['text'] = label['text'] + each['topic'] + '\n'
                                     index += 1
                                 else:
                                     label['text'] = label['text'] + each['topic'] + '\n'
-                                    label['text'] = label['text'] + '答案:' + each['correct']
+                                    label['text'] = label['text'] + '答案:' + each['correct'] + '\n'
                                     self.toplevel_list.pop(index)
                                     text.pop(index)
         else:
             result = await self.api_list[self.v1.get()](self.sess, *text)
             for i in range(len(text)):
-                label = self.toplevel_list[0].children['!label']
+                label = self.toplevel_list[0].children['!canvas'].children['!frame'].children['!label']
                 if not result[i]:
                     label['text'] = label['text'] + "源%s未查询到答案" % self.v1.get()
                 else:
                     for each in result[i]:
                         label['text'] = label['text'] + each['topic'] + '\n'
-                        label['text'] = label['text'] + '答案:' + each['correct']
+                        label['text'] = label['text'] + '答案:' + each['correct'] + '\n'
                 self.toplevel_list.pop(0)
 
     async def show_result(self, text):
         top = Toplevel(self.root)
         top.geometry('400x300')
         top.resizable(False, False)
-        label1 = Label(top, text="", wraplength=400)
-        label1.pack(side=TOP, fill=BOTH)
         self.toplevel_list.append(top)
+
+        canvas = Canvas(top)
+        canvas.pack(side=LEFT, fill=BOTH, expand=True)
+        frame = Frame(canvas)
+        frame_id = canvas.create_window(0, 0, window=frame, anchor=NW)
+        label1 = Label(frame, text="", wraplength=400)
+        label1.pack(side=TOP, fill=BOTH)
+
+        vbar = AutoShowScrollbar(top, orient=VERTICAL)
+        vbar.pack(fill=Y, side=RIGHT, expand=False)
+        vbar.config(command=canvas.yview)
+        canvas.configure(yscrollcommand=vbar.set)
+
+        # 界面鼠标滚动
+        def _scroll_canvas(event):
+            canvas.yview_scroll(int(-event.delta / 60), 'units')
+
+        def _unscroll_canvas(event):
+            return 'break'
+
+        # 文件界面滚动框架大小适配
+        def _configure_frame(event):
+            # update the scrollbars to match the size of the inner frame
+            size = (frame.winfo_reqwidth(), frame.winfo_reqheight())
+            canvas.config(scrollregion="0 0 %s %s" % size)
+            if frame.winfo_reqwidth() != canvas.winfo_width():
+                # update the canvas's width to fit the inner frame
+                canvas.config(width=frame.winfo_reqwidth())
+            if frame.winfo_reqheight() < canvas.winfo_height():
+                canvas.bind_all('<MouseWheel>', _unscroll_canvas)
+            else:
+                canvas.bind_all('<MouseWheel>', _scroll_canvas)
+
+        def _configure_canvas(event):
+            if frame.winfo_reqwidth() != canvas.winfo_width():
+                # update the inner frame's width to fill the canvas
+                canvas.itemconfigure(frame_id, width=canvas.winfo_width())
+        frame.bind('<Configure>', _configure_frame)
+        canvas.bind('<Configure>', _configure_canvas)
+        canvas.bind_all('<MouseWheel>', _scroll_canvas)
+        return
 
     def start_loop(self, loop):
         asyncio.set_event_loop(self.loop)
