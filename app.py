@@ -7,6 +7,8 @@ GUI app
 __author__ = "yanyongyu"
 
 import asyncio
+import logging
+import traceback
 import threading
 
 import requests
@@ -21,11 +23,10 @@ class App():
     def __init__(self):
         # 加载api
         self.api_list = {}
-        model = __import__("api", globals(), locals())
-        for attr in dir(model):
+        for attr in dir(api):
             if attr.startswith('_'):
                 continue
-            fn = getattr(model, attr)
+            fn = getattr(api, attr)
             if callable(fn):
                 if getattr(fn, '__annotations__', None):
                     self.api_list[attr] = fn
@@ -87,41 +88,41 @@ class App():
             for each in self.api_list.keys():
                 if text:
                     index = 0
+                    label = self.toplevel_list[index].children['!label']
+                    label['text'] = label['text'] + "查询中。。。使用源%s\n" % each
                     result = await self.api_list[each](self.sess, *text)
                     for i in range(len(text)):
-                        label1 = self.toplevel_list[index].children['!label']
-                        label2 = self.toplevel_list[index].children['!label2']
-                        if not result:
-                            label1['text'] = label1['text'] + "源%s未查询到答案\n" % each
-                            index += 1
-                        elif not result[i][0]['correct']:
-                            label1['text'] = label1['text'] + result[i][0]['topic']
+                        if not result[i]:
+                            label['text'] = label1['text'] + "源%s未查询到答案\n" % each
                             index += 1
                         else:
-                            label1['text'] = label1['text'] + str(result[i][0]['topic'])
-                            label2['text'] = label2['text'] + str(result[i][0]['correct'])
-                            self.toplevel_list.pop(0)
-                            text.pop(index)
+                            for each in result[i]:
+                                if not each['correct']:
+                                    label['text'] = label['text'] + each['topic\n']
+                                    index += 1
+                                else:
+                                    label['text'] = label['text'] + each['topic'] + '\n'
+                                    label['text'] = label['text'] + '答案:' + each['correct']
+                                    self.toplevel_list.pop(index)
+                                    text.pop(index)
         else:
             result = await self.api_list[self.v1.get()](self.sess, *text)
             for i in range(len(text)):
-                label1 = self.toplevel_list[0].children['!label']
-                label2 = self.toplevel_list[0].children['!label2']
+                label = self.toplevel_list[0].children['!label']
                 if not result[i]:
-                    label1['text'] = label1['text'] + "未查询到答案"
-                    label2['text'] = label2['text'] + "未查询到答案"
+                    label['text'] = label['text'] + "源%s未查询到答案" % self.v1.get()
                 else:
-                    label1['text'] = label1['text'] + str(result[i][0]['topic'])
-                    label2['text'] = label2['text'] + str(result[i][0]['correct'])
+                    for each in result[i]:
+                        label['text'] = label['text'] + each['topic'] + '\n'
+                        label['text'] = label['text'] + '答案:' + each['correct']
                 self.toplevel_list.pop(0)
 
     async def show_result(self, text):
         top = Toplevel(self.root)
         top.geometry('400x300')
-        label1 = Label(top, text="查询中...\n")
+        top.resizable(False, False)
+        label1 = Label(top, text="", wraplength=400)
         label1.pack(side=TOP, fill=BOTH)
-        label2 = Label(top, text="答案：\n")
-        label2.pack(side=BOTTOM, fill=BOTH)
         self.toplevel_list.append(top)
 
     def start_loop(self, loop):
@@ -139,5 +140,9 @@ class App():
 
 
 if __name__ == "__main__":
-    app = App()
-    app.show()
+    logging.basicConfig(level=logging.INFO)
+    try:
+        app = App()
+        app.show()
+    except Exception:
+        traceback.print_exc()

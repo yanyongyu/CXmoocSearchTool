@@ -7,14 +7,17 @@ This is the apis of searching the answer.
 __author__ = "yanyongyu"
 __all__ = ["cxmooc_tool", "poxiaobbs", "forestpolice", "bankroft"]
 
+import sys
 import time
+import json
 import logging
+import asyncio
 from hashlib import md5
 
-from lxml import etree
 import requests
+from lxml import etree
 
-logging.basicConfig(level=logging.INFO)
+requests.packages.urllib3.disable_warnings()
 
 
 async def cxmooc_tool(sess: requests.Session,
@@ -47,7 +50,9 @@ async def cxmooc_tool(sess: requests.Session,
             for answ in each['result']:
                 temp = {}
                 temp['topic'] = answ['topic']
-                temp['correct'] = answ['correct'][0]['option']
+                temp['correct'] = ''
+                for option in answ['correct']:
+                    temp['correct'] = temp['correct'] + str(option['option'])
                 answer.append(temp)
             result.append(answer)
 
@@ -85,12 +90,13 @@ async def poxiaobbs(sess: requests.Session,
             temp = {}
             selector = etree.HTML(res.text)
             answer_div = selector.xpath('//div[@class="ans"]')
-            answer_text = answer_div[0].xpath('string(.)')\
-                .strip().replace('  ', '').replace('\n', '')
-            if "答案：" in answer_text:
-                temp['topic'] = answer_text.split("答案：")[0]
-                temp['correct'] = answer_text.split("答案：")[1]
-                answer.append(temp)
+            for each in answer_div:
+                answer_text = each.xpath('string(.)')\
+                    .strip().replace('  ', '').replace('\n', '')
+                if "答案：" in answer_text:
+                    temp['topic'] = answer_text.split("答案：")[0]
+                    temp['correct'] = answer_text.split("答案：")[1]
+                    answer.append(temp)
         result.append(answer)
 
         time.sleep(0.5)
@@ -183,7 +189,6 @@ async def bankroft(sess: requests.Session,
                 temp['correct'] = json_text['data']
                 answer.append(temp)
             elif json_text['code'] == 101:
-                print(json_text)
                 temp = {}
                 temp['topic'] = "题目输入不完整！bankroft接口需要除题目类型外完整题目\n"
                 temp['correct'] = ""
@@ -202,9 +207,65 @@ async def bankroft(sess: requests.Session,
     return result
 
 
-def cmd():
-    pass
+async def cmd():
+    # 获取所有api
+    api_list = {}
+    for each in globals().keys():
+        if each.startswith('_'):
+            continue
+        fn = globals()[each]
+        if callable(fn):
+            if getattr(fn, '__annotations__', None):
+                api_list[each] = fn
+
+    args = sys.argv[1:]
+    if not args or "-h" in args:
+        print("超星查题助手\n\tpython api.py [-api=] -text=\nusage:")
+        print("\t-h\tPrint help")
+        print("\t-api\tUsing the specified api\n\t\tapi list:")
+        for each in api_list.keys():
+            print("\t\t\t%s" % each)
+        print("\t-text question(-text can be used more than one time)")
+    else:
+        # 接收命令行参数
+        text = []
+        search = None
+        for each in args:
+            if each.startswith("-api="):
+                if search is not None:
+                    raise ValueError("More than one specified api.")
+                if each[5:] in api_list:
+                    search = api_list[each[5:]]
+                else:
+                    raise ValueError("Unknow api. Use -h for help.")
+            elif each.startswith("-text="):
+                text.append(each[6:])
+
+        # 获取答案
+        answer = []
+        if not search:
+            for each in api_list.keys():
+                if text:
+                    index = 0
+                    result = await api_list[each](*text)
+                    for i in range(len(text)):
+                        if not result[i] or not result[i][0]['correct']:
+                            index += 1
+                        else:
+                            answer.append(result[i])
+                            text.pop(index)
+        else:
+            result = await search(*text)
+            for i in range(len(text)):
+                if not result[i] or not result[i][0]['correct']:
+                    answer.append([])
+                else:
+                    answer.append(result[i])
+
+        print(json.dumps(answer))
 
 
 if __name__ == "__main__":
-    cmd()
+    logging.basicConfig(level=logging.WARN)
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(cmd())
