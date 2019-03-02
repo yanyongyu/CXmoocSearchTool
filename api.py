@@ -5,7 +5,8 @@ This is the apis of searching the answer.
 """
 
 __author__ = "yanyongyu"
-__all__ = ["cxmooc_tool", "poxiaobbs", "forestpolice", "bankroft"]
+__all__ = ["cxmooc_tool", "poxiaobbs", "forestpolice", "bankroft",
+           "jiuaidaikan"]
 
 import sys
 import time
@@ -207,6 +208,61 @@ async def bankroft(sess: requests.Session,
     return result
 
 
+async def jiuaidaikan(sess: requests.Session,
+                      *args: list) -> list:
+    """
+    本题库不支持所有可能题目搜索！
+    """
+    # 输入参数处理
+    if not isinstance(sess, requests.Session):
+        args = list(args)
+        args.insert(0, sess)
+        args = tuple(args)
+        sess = requests.Session()
+
+    # 接口
+    url = "http://www.92daikan.com/tiku.aspx"
+
+    # 获取接口参数
+    res = sess.get(url, verify=False)
+    selector = etree.HTML(res.text)
+    viewstate = selector.xpath('//*[@id="__VIEWSTATE"]/@value')
+    viewstategenerator = selector.xpath(
+            '//*[@id="__VIEWSTATEGENERATOR"]/@value')
+    eventvalidation = selector.xpath('//*[@id="__EVENTVALIDATION"]/@value')
+
+    # 接口参数
+    result = []
+    data = {}
+    data['__VIEWSTATE'] = viewstate
+    data['__VIEWSTATEGENERATOR'] = viewstategenerator
+    data['__EVENTVALIDATION'] = eventvalidation
+    data['ctl00$ContentPlaceHolder1$gen'] = '查询'
+    for i in range(len(args)):
+        data['ctl00$ContentPlaceHolder1$timu'] = args[i]
+
+        # post请求
+        logging.info("Post to 92daikan. Question %d" % i)
+        res = sess.post(url, data=data, verify=False)
+
+        # 处理结果
+        logging.info("Processing result")
+        answer = []
+        if res.status_code == 200:
+            selector = etree.HTML(res.text)
+            temp = {}
+            temp['topic'] = args[i]
+            temp['correct'] = selector.xpath('//*[@id="daan"]/text()')
+            answer.append(temp)
+        result.append(answer)
+
+        time.sleep(0.5)
+
+    logging.info("Return result: %s" % result)
+
+    return result
+
+
 async def cmd():
     # 获取所有api
     api_list = {}
@@ -256,6 +312,8 @@ async def cmd():
                             text.pop(index)
         else:
             result = await search(*text)
+            if not result:
+                return
             for i in range(len(text)):
                 if not result[i] or not result[i][0]['correct']:
                     answer.append([])
