@@ -191,12 +191,12 @@ async def bankroft(sess: requests.Session,
                 answer.append(temp)
             elif json_text['code'] == 101:
                 temp = {}
-                temp['topic'] = "题目输入不完整！bankroft接口需要除题目类型外完整题目\n"
+                temp['topic'] = "题目输入不完整！bankroft接口需要除题目类型外完整题目"
                 temp['correct'] = ""
                 answer.append(temp)
             else:
                 temp = {}
-                temp['topic'] = "bankroft接口查询次数已达上限！\n"
+                temp['topic'] = "bankroft接口查询次数已达上限！"
                 temp['correct'] = ""
                 answer.append(temp)
         result.append(answer)
@@ -252,7 +252,7 @@ async def jiuaidaikan(sess: requests.Session,
             selector = etree.HTML(res.text)
             temp = {}
             temp['topic'] = args[i]
-            temp['correct'] = selector.xpath('//*[@id="daan"]/text()')
+            temp['correct'] = selector.xpath('//*[@id="daan"]/text()')[0]
             answer.append(temp)
         result.append(answer)
 

@@ -142,6 +142,9 @@ class App():
                 label = self.toplevel_list[0].children['!canvas'].children['!frame'].children['!label']
                 if not result[i]:
                     label['text'] = label['text'] + "源%s未查询到答案" % self.v1.get()
+                elif not result[i][0]['correct']:
+                    label['text'] = label['text'] + result[i][0]['topic'] + '\n'
+                    label['text'] = label['text'] + "源%s未查询到答案" % self.v1.get()
                 else:
                     for each in result[i]:
                         label['text'] = label['text'] + each['topic'] + '\n'
