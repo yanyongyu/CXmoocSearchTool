@@ -276,18 +276,22 @@ async def cmd():
 
     args = sys.argv[1:]
     if not args or "-h" in args:
-        print("超星查题助手\n\tpython api.py [-api=] -text=\nusage:")
+        print("超星查题助手\n\tpython api.py [-json] [-api=] -text=\nusage:")
         print("\t-h\tPrint help")
+        print("\t-json\tReturn json data at last")
         print("\t-api\tUsing the specified api\n\t\tapi list:")
         for each in api_list.keys():
             print("\t\t\t%s" % each)
-        print("\t-text question(-text can be used more than one time)")
+        print("\t-text\tquestion(-text can be used more than one time)")
     else:
         # 接收命令行参数
         text = []
         search = None
+        JSON = False
         for each in args:
-            if each.startswith("-api="):
+            if each.startswith("-json"):
+                JSON = True
+            elif each.startswith("-api="):
                 if search is not None:
                     raise ValueError("More than one specified api.")
                 if each[5:] in api_list:
@@ -311,17 +315,20 @@ async def cmd():
                             answer.append(result[i])
                             text.pop(index)
         else:
-            result = await search(*text)
-            if not result:
-                return
-            for i in range(len(text)):
-                if not result[i] or not result[i][0]['correct']:
-                    answer.append([])
-                else:
-                    answer.append(result[i])
+            if text:
+                result = await search(*text)
+                if not result:
+                    return
+                for i in range(len(text)):
+                    if not result[i] or not result[i][0]['correct']:
+                        answer.append([])
+                    else:
+                        answer.append(result[i])
 
-#        print(answer)
-        print(json.dumps(answer))
+        if not JSON:
+            print(answer)
+        else:
+            print(json.dumps(answer))
 #        json.dump(answer, open("anwser.json", "w"))
 
 
