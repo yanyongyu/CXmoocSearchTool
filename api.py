@@ -138,7 +138,8 @@ async def forestpolice(sess: requests.Session,
             temp = {}
             temp['topic'] = args[i]
             temp['correct'] = res.json()['data']
-            answer.append(temp)
+            if temp['correct'] != '未找到答案':
+                answer.append(temp)
         result.append(answer)
 
         time.sleep(0.5)
@@ -253,7 +254,48 @@ async def jiuaidaikan(sess: requests.Session,
             temp = {}
             temp['topic'] = args[i]
             temp['correct'] = selector.xpath('//*[@id="daan"]/text()')[0]
-            answer.append(temp)
+            if temp['correct'] != '未找到答案':
+                answer.append(temp)
+        result.append(answer)
+
+        time.sleep(0.5)
+
+    logging.info("Return result: %s" % result)
+
+    return result
+
+
+async def wangke120(sess: requests.Session,
+                    *args: list) -> list:
+    # 输入参数处理
+    if not isinstance(sess, requests.Session):
+        args = list(args)
+        args.insert(0, sess)
+        args = tuple(args)
+        sess = requests.Session()
+
+    # 接口
+    url = "https://wangke120.com/selectCxDb.php"
+
+    # 接口参数
+    result = []
+    data = {}
+    for i in range(len(args)):
+        data['question'] = args[i]
+
+        # post请求
+        logging.info("Post to wangke120. Question %d" % i)
+        res = sess.post(url, data=data, verify=False)
+
+        # 处理结果
+        logging.info("Processing result")
+        answer = []
+        if res.status_code == 200:
+            temp = {}
+            temp['topic'] = args[i]
+            temp['correct'] = res.text
+            if temp['correct'] != '未找到':
+                answer.append(temp)
         result.append(answer)
 
         time.sleep(0.5)

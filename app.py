@@ -106,13 +106,14 @@ class App():
         self.root.mainloop()
 
     def start_search(self):
-        text = self.text1.get(1.0, END).strip(' \n\r').split()
+        text = self.text1.get(1.0, END).strip(' \n\r').split('\n')
+        logging.info("Text get: %s" % text)
         for each in text:
             self.show_toplevel()
         self.start_coroutine(self.search())
 
     async def search(self):
-        text = self.text1.get(1.0, END).strip(' \n\r').split()
+        text = self.text1.get(1.0, END).strip(' \n\r').split('\n')
         if self.v1.get() == "自动选择":
             for each in self.api_list.keys():
                 if text:
@@ -124,19 +125,22 @@ class App():
                     for i in range(len(text)):
                         label = self.toplevel_list[index].children['!canvas'].children['!frame'].children['!label']
                         if not result[i]:
-                            label['text'] = label1['text'] + "源%s未查询到答案\n" % each
+                            label['text'] = label['text'] + "源%s未查询到答案\n" % each
+                            index += 1
+                        elif not result[i][0]['correct']:
+                            label['text'] = label['text'] + result[i][0]['topic'] + '\n'
+                            label['text'] = label['text'] + "源%s未查询到答案\n" % each
                             index += 1
                         else:
-                            for each in result[i]:
-                                if not each['correct']:
-                                    label['text'] = label['text'] + each['topic'] + '\n'
-                                    index += 1
-                                else:
-                                    label['text'] = label['text'] + each['topic'] + '\n'
-                                    label['text'] = label['text'] + '答案:' + each['correct'] + '\n'
-                                    self.toplevel_list.pop(index)
-                                    text.pop(index)
+                            for answer in result[i]:
+                                label['text'] = label['text'] + answer['topic'] + '\n'
+                                label['text'] = label['text'] + '答案:' + answer['correct'] + '\n'
+                                self.toplevel_list.pop(index)
+                                text.pop(index)
         else:
+            for toplevel in self.toplevel_list:
+                label = toplevel.children['!canvas'].children['!frame'].children['!label']
+                label['text'] = label['text'] + "查询中。。。使用源%s\n" % self.v1.get()
             result = await self.api_list[self.v1.get()](self.sess, *text)
             for i in range(len(text)):
                 label = self.toplevel_list[0].children['!canvas'].children['!frame'].children['!label']
