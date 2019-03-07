@@ -32,7 +32,7 @@ async def cxmooc_tool(sess: requests.Session,
     # 接口
     url = "https://blog.icodef.com:8081/v2/answer"
 
-    # 接口参数
+    # 接口参
     data = {}
     for i in range(len(args)):
         data['topic[%d]' % i] = args[i]
@@ -52,17 +52,15 @@ async def cxmooc_tool(sess: requests.Session,
 
     # 处理结果
     logging.info("Processing result")
-    result = []
+    result = [[] for i in range(len(args))]
     for each in res.json():
-        answer = []
         for answ in each['result']:
             temp = {}
             temp['topic'] = answ['topic']
             temp['correct'] = ''
             for option in answ['correct']:
                 temp['correct'] = temp['correct'] + str(option['option'])
-            answer.append(temp)
-        result.append(answer)
+            result[each['index']].append(temp)
 
     logging.info("Return result: %s" % result)
 

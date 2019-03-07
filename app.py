@@ -135,8 +135,8 @@ class App():
                             for answer in result[i]:
                                 label['text'] = label['text'] + answer['topic'] + '\n'
                                 label['text'] = label['text'] + '答案:' + answer['correct'] + '\n'
-                                toplevel_list.pop(index)
-                                text.pop(index)
+                            toplevel_list.pop(index)
+                            text.pop(index)
         else:
             for toplevel in toplevel_list:
                 label = toplevel.children['!canvas'].children['!frame'].children['!label']
