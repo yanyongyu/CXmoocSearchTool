@@ -9,7 +9,6 @@ __all__ = ["cxmooc_tool", "poxiaobbs", "forestpolice", "bankroft",
            "jiuaidaikan"]
 
 import sys
-import time
 import json
 import logging
 import asyncio
@@ -40,22 +39,30 @@ async def cxmooc_tool(sess: requests.Session,
 
     # post请求
     logging.info("Post to cxmooc_tool api.")
-    res = sess.post(url, data=data, verify=False)
+    try:
+        res = sess.post(url, data=data, verify=False)
+        res.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        result = []
+        for each in args:
+            answer = []
+            answer.append({'topic': str(e), 'correct': ''})
+            result.append(answer)
+        return result
 
     # 处理结果
     logging.info("Processing result")
     result = []
-    if res.status_code == 200:
-        for each in res.json():
-            answer = []
-            for answ in each['result']:
-                temp = {}
-                temp['topic'] = answ['topic']
-                temp['correct'] = ''
-                for option in answ['correct']:
-                    temp['correct'] = temp['correct'] + str(option['option'])
-                answer.append(temp)
-            result.append(answer)
+    for each in res.json():
+        answer = []
+        for answ in each['result']:
+            temp = {}
+            temp['topic'] = answ['topic']
+            temp['correct'] = ''
+            for option in answ['correct']:
+                temp['correct'] = temp['correct'] + str(option['option'])
+            answer.append(temp)
+        result.append(answer)
 
     logging.info("Return result: %s" % result)
 
@@ -82,25 +89,31 @@ async def poxiaobbs(sess: requests.Session,
 
         # post请求
         logging.info("Post to poxiao bbs php. Question %d" % i)
-        res = sess.post(url, data=data, verify=False)
+        try:
+            res = sess.post(url, data=data, verify=False)
+            res.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            answer = []
+            answer.append({'topic': str(e), 'correct': ''})
+            result.append(answer)
+            continue
 
         # 处理结果
         logging.info("Processing result")
         answer = []
-        if res.status_code == 200:
-            selector = etree.HTML(res.text)
-            answer_div = selector.xpath('/html/body/div[1]/div[@class="ans"]')
-            for each in answer_div:
-                temp = {}
-                answer_text = each.xpath('string(.)')\
-                    .strip().replace('  ', '').replace('\n', '')
-                if "答案：" in answer_text:
-                    temp['topic'] = answer_text.split("答案：")[0]
-                    temp['correct'] = answer_text.split("答案：")[1]
-                    answer.append(temp)
+        selector = etree.HTML(res.text)
+        answer_div = selector.xpath('/html/body/div[1]/div[@class="ans"]')
+        for each in answer_div:
+            temp = {}
+            answer_text = each.xpath('string(.)')\
+                .strip().replace('  ', '').replace('\n', '')
+            if "答案：" in answer_text:
+                temp['topic'] = answer_text.split("答案：")[0]
+                temp['correct'] = answer_text.split("答案：")[1]
+                answer.append(temp)
         result.append(answer)
 
-        time.sleep(0.5)
+        await asyncio.sleep(0.5)
 
     logging.info("Return result: %s" % result)
 
@@ -129,20 +142,26 @@ async def forestpolice(sess: requests.Session,
 
         # post请求
         logging.info("Post to forest police. Question %d" % i)
-        res = sess.post(url + args[i], data=data, verify=False)
+        try:
+            res = sess.post(url + args[i], data=data, verify=False)
+            res.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            answer = []
+            answer.append({'topic': str(e), 'correct': ''})
+            result.append(answer)
+            continue
 
         # 处理结果
         logging.info("Processing result")
         answer = []
-        if res.status_code == 200:
-            temp = {}
-            temp['topic'] = args[i]
-            temp['correct'] = res.json()['data']
-            if temp['correct'] != '未找到答案':
-                answer.append(temp)
+        temp = {}
+        temp['topic'] = args[i]
+        temp['correct'] = res.json()['data']
+        if temp['correct'] != '未找到答案':
+            answer.append(temp)
         result.append(answer)
 
-        time.sleep(0.5)
+        await asyncio.sleep(0.5)
 
     logging.info("Return result: %s" % result)
 
@@ -178,31 +197,37 @@ async def bankroft(sess: requests.Session,
 
         # post请求
         logging.info("Get bankroft api. Question %d" % i)
-        res = sess.get(url, params=payload, verify=False)
+        try:
+            res = sess.get(url, params=payload, verify=False)
+            res.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            answer = []
+            answer.append({'topic': str(e), 'correct': ''})
+            result.append(answer)
+            continue
 
         # 处理结果
         logging.info("Processing result")
         answer = []
-        if res.status_code == 200:
-            json_text = res.json()
-            if json_text['code'] == 100:
-                temp = {}
-                temp['topic'] = args[i]
-                temp['correct'] = json_text['data']
-                answer.append(temp)
-            elif json_text['code'] == 101:
-                temp = {}
-                temp['topic'] = "题目输入不完整！bankroft接口需要除题目类型外完整题目"
-                temp['correct'] = ""
-                answer.append(temp)
-            else:
-                temp = {}
-                temp['topic'] = "bankroft接口查询次数已达上限！"
-                temp['correct'] = ""
-                answer.append(temp)
+        json_text = res.json()
+        if json_text['code'] == 100:
+            temp = {}
+            temp['topic'] = args[i]
+            temp['correct'] = json_text['data']
+            answer.append(temp)
+        elif json_text['code'] == 101:
+            temp = {}
+            temp['topic'] = "题目输入不完整！bankroft接口需要除题目类型外完整题目"
+            temp['correct'] = ""
+            answer.append(temp)
+        else:
+            temp = {}
+            temp['topic'] = "bankroft接口查询次数已达上限！"
+            temp['correct'] = ""
+            answer.append(temp)
         result.append(answer)
 
-        time.sleep(0.5)
+        await asyncio.sleep(0.5)
 
     logging.info("Return result: %s" % result)
 
@@ -225,12 +250,22 @@ async def jiuaidaikan(sess: requests.Session,
     url = "http://www.92daikan.com/tiku.aspx"
 
     # 获取接口参数
-    res = sess.get(url, verify=False)
-    selector = etree.HTML(res.text)
-    viewstate = selector.xpath('//*[@id="__VIEWSTATE"]/@value')
-    viewstategenerator = selector.xpath(
-            '//*[@id="__VIEWSTATEGENERATOR"]/@value')
-    eventvalidation = selector.xpath('//*[@id="__EVENTVALIDATION"]/@value')
+    try:
+        res = sess.get(url, verify=False)
+        res.raise_for_status()
+        selector = etree.HTML(res.text)
+        viewstate = selector.xpath('//*[@id="__VIEWSTATE"]/@value')
+        viewstategenerator = selector.xpath(
+                '//*[@id="__VIEWSTATEGENERATOR"]/@value')
+        eventvalidation = selector.xpath(
+                '//*[@id="__EVENTVALIDATION"]/@value')
+    except requests.exceptions.RequestException as e:
+        result = []
+        for each in args:
+            answer = []
+            answer.append({'topic': str(e), 'correct': ''})
+            result.append(answer)
+        return result
 
     # 接口参数
     result = []
@@ -244,21 +279,27 @@ async def jiuaidaikan(sess: requests.Session,
 
         # post请求
         logging.info("Post to 92daikan. Question %d" % i)
-        res = sess.post(url, data=data, verify=False)
+        try:
+            res = sess.post(url, data=data, verify=False)
+            res.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            answer = []
+            answer.append({'topic': str(e), 'correct': ''})
+            result.append(answer)
+            continue
 
         # 处理结果
         logging.info("Processing result")
         answer = []
-        if res.status_code == 200:
-            selector = etree.HTML(res.text)
-            temp = {}
-            temp['topic'] = args[i]
-            temp['correct'] = selector.xpath('//*[@id="daan"]/text()')[0]
-            if temp['correct'] != '未找到答案':
-                answer.append(temp)
+        selector = etree.HTML(res.text)
+        temp = {}
+        temp['topic'] = args[i]
+        temp['correct'] = selector.xpath('//*[@id="daan"]/text()')[0]
+        if temp['correct'] != '未找到答案':
+            answer.append(temp)
         result.append(answer)
 
-        time.sleep(0.5)
+        await asyncio.sleep(0.5)
 
     logging.info("Return result: %s" % result)
 
@@ -285,20 +326,26 @@ async def wangke120(sess: requests.Session,
 
         # post请求
         logging.info("Post to wangke120. Question %d" % i)
-        res = sess.post(url, data=data, verify=False)
+        try:
+            res = sess.post(url, data=data, verify=False)
+            res.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            answer = []
+            answer.append({'topic': str(e), 'correct': ''})
+            result.append(answer)
+            continue
 
         # 处理结果
         logging.info("Processing result")
         answer = []
-        if res.status_code == 200:
-            temp = {}
-            temp['topic'] = args[i]
-            temp['correct'] = res.text
-            if temp['correct'] != '未找到':
-                answer.append(temp)
+        temp = {}
+        temp['topic'] = args[i]
+        temp['correct'] = res.text
+        if temp['correct'] != '未找到':
+            answer.append(temp)
         result.append(answer)
 
-        time.sleep(0.5)
+        await asyncio.sleep(0.5)
 
     logging.info("Return result: %s" % result)
 

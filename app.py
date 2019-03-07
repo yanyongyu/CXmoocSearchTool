@@ -44,9 +44,8 @@ class App():
 
         # 初始化session
         self.sess = requests.Session()
-
-        # 答案显示窗口list
-        self.toplevel_list = []
+        headers = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.119 Safari/537.36'}
+        self.sess.headers.update(headers)
 
     def show(self):
         self.root = Tk()
@@ -108,22 +107,23 @@ class App():
     def start_search(self):
         text = self.text1.get(1.0, END).strip(' \n\r').split('\n')
         logging.info("Text get: %s" % text)
+        toplevel_list = []
         for each in text:
-            self.show_toplevel()
-        self.start_coroutine(self.search())
+            toplevel_list = self.show_toplevel(toplevel_list)
+        self.start_coroutine(self.search(toplevel_list))
 
-    async def search(self):
+    async def search(self, toplevel_list):
         text = self.text1.get(1.0, END).strip(' \n\r').split('\n')
         if self.v1.get() == "自动选择":
             for each in self.api_list.keys():
                 if text:
                     index = 0
-                    for toplevel in self.toplevel_list:
+                    for toplevel in toplevel_list:
                         label = toplevel.children['!canvas'].children['!frame'].children['!label']
                         label['text'] = label['text'] + "查询中。。。使用源%s\n" % each
                     result = await self.api_list[each](self.sess, *text)
                     for i in range(len(text)):
-                        label = self.toplevel_list[index].children['!canvas'].children['!frame'].children['!label']
+                        label = toplevel_list[index].children['!canvas'].children['!frame'].children['!label']
                         if not result[i]:
                             label['text'] = label['text'] + "源%s未查询到答案\n" % each
                             index += 1
@@ -135,15 +135,15 @@ class App():
                             for answer in result[i]:
                                 label['text'] = label['text'] + answer['topic'] + '\n'
                                 label['text'] = label['text'] + '答案:' + answer['correct'] + '\n'
-                                self.toplevel_list.pop(index)
+                                toplevel_list.pop(index)
                                 text.pop(index)
         else:
-            for toplevel in self.toplevel_list:
+            for toplevel in toplevel_list:
                 label = toplevel.children['!canvas'].children['!frame'].children['!label']
                 label['text'] = label['text'] + "查询中。。。使用源%s\n" % self.v1.get()
             result = await self.api_list[self.v1.get()](self.sess, *text)
             for i in range(len(text)):
-                label = self.toplevel_list[0].children['!canvas'].children['!frame'].children['!label']
+                label = toplevel_list[0].children['!canvas'].children['!frame'].children['!label']
                 if not result[i]:
                     label['text'] = label['text'] + "源%s未查询到答案" % self.v1.get()
                 elif not result[i][0]['correct']:
@@ -153,13 +153,13 @@ class App():
                     for each in result[i]:
                         label['text'] = label['text'] + each['topic'] + '\n'
                         label['text'] = label['text'] + '答案:' + each['correct'] + '\n'
-                self.toplevel_list.pop(0)
+                toplevel_list.pop(0)
 
-    def show_toplevel(self):
+    def show_toplevel(self, toplevel_list):
         top = Toplevel(self.root)
         top.geometry('400x300')
         top.resizable(False, False)
-        self.toplevel_list.append(top)
+        toplevel_list.append(top)
 
         canvas = Canvas(top)
         canvas.pack(side=LEFT, fill=BOTH, expand=True)
@@ -200,6 +200,8 @@ class App():
         frame.bind('<Configure>', _configure_frame)
         canvas.bind('<Configure>', _configure_canvas)
         canvas.bind_all('<MouseWheel>', _scroll_canvas)
+
+        return toplevel_list
 
     def start_loop(self, loop):
         asyncio.set_event_loop(self.loop)
