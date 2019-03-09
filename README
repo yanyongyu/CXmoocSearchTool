@@ -1,0 +1,11 @@
+![GitHub All Releases](https://img.shields.io/github/downloads/yanyongyu/CXmoocSearchTool/total.svg)
+
+## 浏览器插件全自动挂机请参考：
+https://github.com/CodFrm/cxmooc-tools
+本搜题exe作为插件补充
+可在插件题库未能找到答案或考试时使用
+## api.py
+有python环境的可以只下载api.py
+在终端/cmd中运行
+python api.py -h
+获取帮助
