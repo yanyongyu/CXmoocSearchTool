@@ -387,6 +387,9 @@ async def cmd():
                     raise ValueError("Unknow api. Use -h for help.")
             elif each.startswith("-text="):
                 text.append(each[6:])
+            else:
+                ValueError("Unknow option %s. Use -h for help"
+                           % each.split("=")[0])
 
         # 获取答案
         answer = []
