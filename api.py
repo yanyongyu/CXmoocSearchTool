@@ -21,7 +21,8 @@ requests.packages.urllib3.disable_warnings()
 
 
 async def cxmooc_tool(sess: requests.Session,
-                      *args: list) -> list:
+                      *args: list,
+                      one_time: bool = True) -> list:
     # 输入参数处理
     if not isinstance(sess, requests.Session):
         args = list(args)
@@ -43,12 +44,18 @@ async def cxmooc_tool(sess: requests.Session,
         res = sess.post(url, data=data, verify=False)
         res.raise_for_status()
     except requests.exceptions.RequestException as e:
+        logging.info("Request Exception appeared: %s" % e)
         result = []
         for each in args:
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            result.append(answer)
-        return result
+            if one_time:
+                result.append(answer)
+            else:
+                yield answer
+        if one_time:
+            yield result
+        return
 
     # 处理结果
     logging.info("Processing result")
@@ -62,13 +69,18 @@ async def cxmooc_tool(sess: requests.Session,
                 temp['correct'] = temp['correct'] + str(option['option'])
             result[each['index']].append(temp)
 
-    logging.info("Return result: %s" % result)
-
-    return result
+    if one_time:
+        logging.info("Return result: %s" % result)
+        yield result
+    else:
+        for i in range(len(result)):
+            logging.info("Yield question %s: %s" % (i+1, result[i]))
+            yield result[i]
 
 
 async def poxiaobbs(sess: requests.Session,
-                    *args: list) -> list:
+                    *args: list,
+                    one_time: bool = True) -> list:
     # 输入参数处理
     if not isinstance(sess, requests.Session):
         args = list(args)
@@ -86,14 +98,18 @@ async def poxiaobbs(sess: requests.Session,
         data['tm'] = args[i]
 
         # post请求
-        logging.info("Post to poxiao bbs php. Question %d" % i)
+        logging.info("Post to poxiao bbs php. Question %d" % i+1)
         try:
             res = sess.post(url, data=data, verify=False)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
+            logging.info("Request Exception appeared: %s" % e)
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            result.append(answer)
+            if one_time:
+                result.append(answer)
+            else:
+                yield answer
             continue
 
         # 处理结果
@@ -109,17 +125,23 @@ async def poxiaobbs(sess: requests.Session,
                 temp['topic'] = answer_text.split("答案：")[0]
                 temp['correct'] = answer_text.split("答案：")[1]
                 answer.append(temp)
-        result.append(answer)
+
+        if one_time:
+            result.append(answer)
+        else:
+            logging.info("Yield question %s: %s" % (i+1, answer))
+            yield answer
 
         await asyncio.sleep(0.5)
 
-    logging.info("Return result: %s" % result)
-
-    return result
+    if one_time:
+        logging.info("Return result: %s" % result)
+        yield result
 
 
 async def forestpolice(sess: requests.Session,
-                       *args: list) -> list:
+                       *args: list,
+                       one_time: bool = True) -> list:
     # 输入参数处理
     if not isinstance(sess, requests.Session):
         args = list(args)
@@ -144,9 +166,13 @@ async def forestpolice(sess: requests.Session,
             res = sess.post(url + args[i], data=data, verify=False)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
+            logging.info("Request Exception appeared: %s" % e)
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            result.append(answer)
+            if one_time:
+                result.append(answer)
+            else:
+                yield answer
             continue
 
         # 处理结果
@@ -157,17 +183,23 @@ async def forestpolice(sess: requests.Session,
         temp['correct'] = res.json()['data']
         if temp['correct'] != '未找到答案':
             answer.append(temp)
-        result.append(answer)
+
+        if one_time:
+            result.append(answer)
+        else:
+            logging.info("Yield question %s: %s" % (i+1, answer))
+            yield answer
 
         await asyncio.sleep(0.5)
 
-    logging.info("Return result: %s" % result)
-
-    return result
+    if one_time:
+        logging.info("Return result: %s" % result)
+        yield result
 
 
 async def bankroft(sess: requests.Session,
-                   *args: list) -> list:
+                   *args: list,
+                   one_time: bool = True) -> list:
     """
     该接口只有当题目完整时可用！
     并且有频率限制！
@@ -199,9 +231,13 @@ async def bankroft(sess: requests.Session,
             res = sess.get(url, params=payload, verify=False)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
+            logging.info("Request Exception appeared: %s" % e)
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            result.append(answer)
+            if one_time:
+                result.append(answer)
+            else:
+                yield answer
             continue
 
         # 处理结果
@@ -223,17 +259,23 @@ async def bankroft(sess: requests.Session,
             temp['topic'] = "bankroft接口查询次数已达上限！"
             temp['correct'] = ""
             answer.append(temp)
-        result.append(answer)
+
+        if one_time:
+            result.append(answer)
+        else:
+            logging.info("Yield question %s: %s" % (i+1, answer))
+            yield answer
 
         await asyncio.sleep(0.5)
 
-    logging.info("Return result: %s" % result)
-
-    return result
+    if one_time:
+        logging.info("Return result: %s" % result)
+        yield result
 
 
 async def jiuaidaikan(sess: requests.Session,
-                      *args: list) -> list:
+                      *args: list,
+                      one_time: bool = True) -> list:
     """
     本题库不支持所有可能题目搜索！
     """
@@ -258,12 +300,18 @@ async def jiuaidaikan(sess: requests.Session,
         eventvalidation = selector.xpath(
                 '//*[@id="__EVENTVALIDATION"]/@value')
     except requests.exceptions.RequestException as e:
+        logging.info("Request Exception appeared: %s" % e)
         result = []
         for each in args:
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            result.append(answer)
-        return result
+            if one_time:
+                result.append(answer)
+            else:
+                yield answer
+        if one_time:
+            yield result
+        return
 
     # 接口参数
     result = []
@@ -281,9 +329,13 @@ async def jiuaidaikan(sess: requests.Session,
             res = sess.post(url, data=data, verify=False)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
+            logging.info("Request Exception appeared: %s" % e)
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            result.append(answer)
+            if one_time:
+                result.append(answer)
+            else:
+                yield answer
             continue
 
         # 处理结果
@@ -295,17 +347,23 @@ async def jiuaidaikan(sess: requests.Session,
         temp['correct'] = selector.xpath('//*[@id="daan"]/text()')[0]
         if temp['correct'] != '未找到答案':
             answer.append(temp)
-        result.append(answer)
+
+        if one_time:
+            result.append(answer)
+        else:
+            logging.info("Yield question %s: %s" % (i+1, answer))
+            yield answer
 
         await asyncio.sleep(0.5)
 
-    logging.info("Return result: %s" % result)
-
-    return result
+    if one_time:
+        logging.info("Return result: %s" % result)
+        yield result
 
 
 async def wangke120(sess: requests.Session,
-                    *args: list) -> list:
+                    *args: list,
+                    one_time: bool = True) -> list:
     # 输入参数处理
     if not isinstance(sess, requests.Session):
         args = list(args)
@@ -328,9 +386,13 @@ async def wangke120(sess: requests.Session,
             res = sess.post(url, data=data, verify=False)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
+            logging.info("Request Exception appeared: %s" % e)
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            result.append(answer)
+            if one_time:
+                result.append(answer)
+            else:
+                yield answer
             continue
 
         # 处理结果
@@ -341,13 +403,17 @@ async def wangke120(sess: requests.Session,
         temp['correct'] = res.text
         if temp['correct'] != '未找到':
             answer.append(temp)
-        result.append(answer)
+        if one_time:
+            result.append(answer)
+        else:
+            logging.info("Yield question %s: %s" % (i+1, answer))
+            yield answer
 
         await asyncio.sleep(0.5)
 
-    logging.info("Return result: %s" % result)
-
-    return result
+    if one_time:
+        logging.info("Return result: %s" % result)
+        yield result
 
 
 async def cmd():

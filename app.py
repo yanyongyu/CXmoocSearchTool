@@ -81,6 +81,7 @@ class App():
         frame2.pack(side=TOP, fill=BOTH)
         self.text1 = Text(frame2, height=19, borderwidth=3, font=('微软雅黑', 15))
         self.text1.pack(padx=2, pady=5, side=LEFT, fill=BOTH, expand=True)
+        self.text1.focus_set()
         vbar_y = AutoShowScrollbar(frame2, orient=VERTICAL)
         vbar_y.pack(fill=Y, side=RIGHT, expand=False)
         vbar_y.config(command=self.text1.yview)
@@ -107,23 +108,58 @@ class App():
     def start_search(self):
         text = self.text1.get(1.0, END).strip(' \n\r').split('\n')
         logging.info("Text get: %s" % text)
-        toplevel_list = []
-        for each in text:
-            toplevel_list = self.show_toplevel(toplevel_list)
-        self.start_coroutine(self.search(toplevel_list))
+        index = 0
 
-    async def search(self, toplevel_list):
+        # 显示toplevel
+        top = Toplevel(self.root)
+        top.geometry('400x300')
+        top.resizable(False, False)
+
+        # 根框架
+        frame_root = Frame(top)
+        frame_root.pack(fill=BOTH)
+
+        # 上/下一题按钮
+        frame_button = Frame(top)
+        frame_button.pack(side=BOTTOM, fill=X)
+        previous_button = Button(frame_button, text="上一题")
+        previous_button.pack(side=LEFT, expand=True)
+        next_button = Button(frame_button, text="下一题")
+        next_button.pack(side=RIGHT, expand=True)
+
+        frame_list = [self.show_frame(frame_root) for i in range(len(text))]
+        frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
+
+        def _previous(frame_list):
+            nonlocal index
+            if index > 0:
+                frame_list[index].pack_forget()
+                index -= 1
+                frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
+
+        def _next(frame_list):
+            nonlocal index
+            if index < len(frame_list):
+                frame_list[index].pack_forget()
+                index += 1
+                frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
+
+        previous_button.bind('<ButtonRelease-1>', lambda x: _previous(frame_list))
+        next_button.bind('<ButtonRelease-1>', lambda x: _next(frame_list))
+        self.start_coroutine(self.search(frame_list))
+
+    async def search(self, frame_list):
         text = self.text1.get(1.0, END).strip(' \n\r').split('\n')
         if self.v1.get() == "自动选择":
             for each in self.api_list.keys():
                 if text:
                     index = 0
-                    for toplevel in toplevel_list:
+                    for toplevel in canvas_list:
                         label = toplevel.children['!canvas'].children['!frame'].children['!label']
                         label['text'] = label['text'] + "查询中。。。使用源%s\n" % each
                     result = await self.api_list[each](self.sess, *text)
                     for i in range(len(text)):
-                        label = toplevel_list[index].children['!canvas'].children['!frame'].children['!label']
+                        label = canvas_list[index].children['!canvas'].children['!frame'].children['!label']
                         if not result[i]:
                             label['text'] = label['text'] + "源%s未查询到答案\n" % each
                             index += 1
@@ -135,58 +171,61 @@ class App():
                             for answer in result[i]:
                                 label['text'] = label['text'] + answer['topic'] + '\n'
                                 label['text'] = label['text'] + '答案:' + answer['correct'] + '\n'
-                            toplevel_list.pop(index)
+                            canvas_list.pop(index)
                             text.pop(index)
         else:
-            for toplevel in toplevel_list:
-                label = toplevel.children['!canvas'].children['!frame'].children['!label']
-                label['text'] = label['text'] + "查询中。。。使用源%s\n" % self.v1.get()
-            result = await self.api_list[self.v1.get()](self.sess, *text)
+            generator = self.api_list[self.v1.get()](self.sess,
+                                                     *text, one_time=False)
             for i in range(len(text)):
-                label = toplevel_list[0].children['!canvas'].children['!frame'].children['!label']
-                if not result[i]:
+                label = frame_list[i].children['!canvas'].children['!frame'].children['!label']
+                label['text'] = label['text'] + "查询中。。。使用源%s\n" % self.v1.get()
+                result = await generator.asend(None)
+                if not result:
                     label['text'] = label['text'] + "源%s未查询到答案" % self.v1.get()
-                elif not result[i][0]['correct']:
-                    label['text'] = label['text'] + result[i][0]['topic'] + '\n'
+                elif not result[0]['correct']:
+                    label['text'] = label['text'] + result[0]['topic'] + '\n'
                     label['text'] = label['text'] + "源%s未查询到答案" % self.v1.get()
                 else:
-                    for each in result[i]:
+                    for each in result:
                         label['text'] = label['text'] + each['topic'] + '\n'
                         label['text'] = label['text'] + '答案:' + each['correct'] + '\n'
-                toplevel_list.pop(0)
 
-    def show_toplevel(self, toplevel_list):
-        top = Toplevel(self.root)
-        top.geometry('400x300')
-        top.resizable(False, False)
-        toplevel_list.append(top)
+    def show_frame(self, frame_root):
+        # 总体框架
+        frame_out = Frame(frame_root)
 
-        canvas = Canvas(top)
+        # 显示画布
+        canvas = Canvas(frame_out)
         canvas.pack(side=LEFT, fill=BOTH, expand=True)
+        # 内容框架
         frame = Frame(canvas)
         frame_id = canvas.create_window(0, 0, window=frame, anchor=NW)
+        # 内容标签
         label1 = Label(frame, text="", wraplength=380)
         label1.pack(side=TOP, fill=BOTH)
 
-        vbar = AutoShowScrollbar(top, orient=VERTICAL)
+        # 动态隐藏滚动条
+        vbar = AutoShowScrollbar(frame_out, orient=VERTICAL)
         vbar.pack(fill=Y, side=RIGHT, expand=False)
+
+        # 互相绑定滚动
         vbar.config(command=canvas.yview)
         canvas.configure(yscrollcommand=vbar.set)
 
-        # 界面鼠标滚动
+        # 界面鼠标滚动函数
         def _scroll_canvas(event):
             canvas.yview_scroll(int(-event.delta / 60), 'units')
 
         def _unscroll_canvas(event):
             return 'break'
 
-        # 文件界面滚动框架大小适配
+        # 内容框架大小适配
         def _configure_frame(event):
-            # update the scrollbars to match the size of the inner frame
+            # 更新画布的滚动范围以适配内部框架
             size = (frame.winfo_reqwidth(), frame.winfo_reqheight())
             canvas.config(scrollregion="0 0 %s %s" % size)
             if frame.winfo_reqwidth() != canvas.winfo_width():
-                # update the canvas's width to fit the inner frame
+                # 更新画布大小以适配内部框架
                 canvas.config(width=frame.winfo_reqwidth())
             if frame.winfo_reqheight() < canvas.winfo_height():
                 canvas.bind_all('<MouseWheel>', _unscroll_canvas)
@@ -195,22 +234,23 @@ class App():
 
         def _configure_canvas(event):
             if frame.winfo_reqwidth() != canvas.winfo_width():
-                # update the inner frame's width to fill the canvas
+                # 更新内部框架大小以适配画布大小
                 canvas.itemconfigure(frame_id, width=canvas.winfo_width())
+
         frame.bind('<Configure>', _configure_frame)
         canvas.bind('<Configure>', _configure_canvas)
         canvas.bind_all('<MouseWheel>', _scroll_canvas)
 
-        return toplevel_list
+        return frame_out
 
-    def start_loop(self, loop):
+    def _start_loop(self, loop):
         asyncio.set_event_loop(self.loop)
         self.loop.run_forever()
 
     def start_coroutine(self, coroutine):
         new_loop = asyncio.new_event_loop()
         self.loop = new_loop
-        t = threading.Thread(target=self.start_loop, args=(new_loop,))
+        t = threading.Thread(target=self._start_loop, args=(new_loop,))
         t.start()
 
         asyncio.run_coroutine_threadsafe(coroutine, self.loop)
