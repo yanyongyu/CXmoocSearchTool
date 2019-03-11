@@ -419,6 +419,7 @@ async def cmd():
                 remain = [text[i] for i in range(len(text)) if not answer[i]]
                 if remain:
                     generator = api_list[each](*remain)
+                    await generator.asend(None)
                     for i in range(len(text)):
                         result = await generator.asend(None)
                         if not result or not result[0]['correct']:
@@ -428,6 +429,7 @@ async def cmd():
         else:
             if text:
                 generator = search(*text)
+                await generator.asend(None)
                 for i in range(len(text)):
                     result = await generator.asend(None)
                     if not result or not result[0]['correct']:
