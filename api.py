@@ -431,9 +431,9 @@ async def cmd():
                 for i in range(len(text)):
                     result = await generator.asend(None)
                     if not result or not result[0]['correct']:
-                        answer.append([])
+                        continue
                     else:
-                        answer.append(result)
+                        answer[i] = result
 
         if not JSON:
             print(answer)
