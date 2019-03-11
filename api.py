@@ -21,8 +21,7 @@ requests.packages.urllib3.disable_warnings()
 
 
 async def cxmooc_tool(sess: requests.Session,
-                      *args: list,
-                      one_time: bool = True) -> list:
+                      *args: list) -> list:
     # 输入参数处理
     if not isinstance(sess, requests.Session):
         args = list(args)
@@ -33,7 +32,8 @@ async def cxmooc_tool(sess: requests.Session,
     # 接口
     url = "https://blog.icodef.com:8081/v2/answer"
 
-    # 接口参
+    # 接口参数
+    index = yield
     data = {}
     for i in range(len(args)):
         data['topic[%d]' % i] = args[i]
@@ -45,17 +45,11 @@ async def cxmooc_tool(sess: requests.Session,
         res.raise_for_status()
     except requests.exceptions.RequestException as e:
         logging.info("Request Exception appeared: %s" % e)
-        result = []
         for each in args:
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            if one_time:
-                result.append(answer)
-            else:
-                yield answer
-        if one_time:
-            yield result
-        return
+            yield answer
+        raise StopIteration
 
     # 处理结果
     logging.info("Processing result")
@@ -69,18 +63,16 @@ async def cxmooc_tool(sess: requests.Session,
                 temp['correct'] = temp['correct'] + str(option['option'])
             result[each['index']].append(temp)
 
-    if one_time:
-        logging.info("Return result: %s" % result)
-        yield result
-    else:
-        for i in range(len(result)):
-            logging.info("Yield question %s: %s" % (i+1, result[i]))
-            yield result[i]
+    for i in range(len(result)):
+        if index and i < index:
+            continue
+        logging.info("Yield question %s: %s" % (i+1, result[i]))
+        index = yield result[i]
+    raise StopIteration
 
 
 async def poxiaobbs(sess: requests.Session,
-                    *args: list,
-                    one_time: bool = True) -> list:
+                    *args: list) -> list:
     # 输入参数处理
     if not isinstance(sess, requests.Session):
         args = list(args)
@@ -92,9 +84,11 @@ async def poxiaobbs(sess: requests.Session,
     url = "https://cx.poxiaobbs.com/index.php"
 
     # 接口参数
+    index = yield
     data = {}
-    result = []
     for i in range(len(args)):
+        if index and i < index:
+            continue
         data['tm'] = args[i]
 
         # post请求
@@ -106,10 +100,7 @@ async def poxiaobbs(sess: requests.Session,
             logging.info("Request Exception appeared: %s" % e)
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            if one_time:
-                result.append(answer)
-            else:
-                yield answer
+            index = yield answer
             continue
 
         # 处理结果
@@ -126,22 +117,16 @@ async def poxiaobbs(sess: requests.Session,
                 temp['correct'] = answer_text.split("答案：")[1]
                 answer.append(temp)
 
-        if one_time:
-            result.append(answer)
-        else:
-            logging.info("Yield question %s: %s" % (i+1, answer))
-            yield answer
+        logging.info("Yield question %s: %s" % (i+1, answer))
+        index = yield answer
 
         await asyncio.sleep(0.5)
 
-    if one_time:
-        logging.info("Return result: %s" % result)
-        yield result
+    raise StopIteration
 
 
 async def forestpolice(sess: requests.Session,
-                       *args: list,
-                       one_time: bool = True) -> list:
+                       *args: list) -> list:
     # 输入参数处理
     if not isinstance(sess, requests.Session):
         args = list(args)
@@ -153,9 +138,11 @@ async def forestpolice(sess: requests.Session,
     url = "http://mooc.forestpolice.org/cx/0/"
 
     # 接口参数
-    result = []
+    index = yield
     data = {}
     for i in range(len(args)):
+        if index and i < index:
+            continue
         data['course'] = ""
         data['type'] = ""
         data['option'] = ""
@@ -169,10 +156,7 @@ async def forestpolice(sess: requests.Session,
             logging.info("Request Exception appeared: %s" % e)
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            if one_time:
-                result.append(answer)
-            else:
-                yield answer
+            index = yield answer
             continue
 
         # 处理结果
@@ -184,22 +168,16 @@ async def forestpolice(sess: requests.Session,
         if temp['correct'] != '未找到答案':
             answer.append(temp)
 
-        if one_time:
-            result.append(answer)
-        else:
-            logging.info("Yield question %s: %s" % (i+1, answer))
-            yield answer
+        logging.info("Yield question %s: %s" % (i+1, answer))
+        index = yield answer
 
         await asyncio.sleep(0.5)
 
-    if one_time:
-        logging.info("Return result: %s" % result)
-        yield result
+    raise StopIteration
 
 
 async def bankroft(sess: requests.Session,
-                   *args: list,
-                   one_time: bool = True) -> list:
+                   *args: list) -> list:
     """
     该接口只有当题目完整时可用！
     并且有频率限制！
@@ -216,9 +194,11 @@ async def bankroft(sess: requests.Session,
     url = "http://123.207.19.72/api/query?"
 
     # 接口参数
-    result = []
+    index = yield
     payload = {}
     for i in range(len(args)):
+        if index and i < index:
+            continue
         md = md5()
         md.update((args[i]+string_enc).encode())
 
@@ -234,10 +214,7 @@ async def bankroft(sess: requests.Session,
             logging.info("Request Exception appeared: %s" % e)
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            if one_time:
-                result.append(answer)
-            else:
-                yield answer
+            index = yield answer
             continue
 
         # 处理结果
@@ -260,22 +237,16 @@ async def bankroft(sess: requests.Session,
             temp['correct'] = ""
             answer.append(temp)
 
-        if one_time:
-            result.append(answer)
-        else:
-            logging.info("Yield question %s: %s" % (i+1, answer))
-            yield answer
+        logging.info("Yield question %s: %s" % (i+1, answer))
+        index = yield answer
 
         await asyncio.sleep(0.5)
 
-    if one_time:
-        logging.info("Return result: %s" % result)
-        yield result
+    raise StopIteration
 
 
 async def jiuaidaikan(sess: requests.Session,
-                      *args: list,
-                      one_time: bool = True) -> list:
+                      *args: list) -> list:
     """
     本题库不支持所有可能题目搜索！
     """
@@ -301,26 +272,25 @@ async def jiuaidaikan(sess: requests.Session,
                 '//*[@id="__EVENTVALIDATION"]/@value')
     except requests.exceptions.RequestException as e:
         logging.info("Request Exception appeared: %s" % e)
-        result = []
-        for each in args:
+        index = yield
+        for i in range(len(args)):
+            if index and i < index:
+                continue
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            if one_time:
-                result.append(answer)
-            else:
-                yield answer
-        if one_time:
-            yield result
-        return
+            yield answer
+        raise StopIteration
 
     # 接口参数
-    result = []
+    index = yield
     data = {}
     data['__VIEWSTATE'] = viewstate
     data['__VIEWSTATEGENERATOR'] = viewstategenerator
     data['__EVENTVALIDATION'] = eventvalidation
     data['ctl00$ContentPlaceHolder1$gen'] = '查询'
     for i in range(len(args)):
+        if index and i < index:
+            continue
         data['ctl00$ContentPlaceHolder1$timu'] = args[i]
 
         # post请求
@@ -332,10 +302,7 @@ async def jiuaidaikan(sess: requests.Session,
             logging.info("Request Exception appeared: %s" % e)
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            if one_time:
-                result.append(answer)
-            else:
-                yield answer
+            index = yield answer
             continue
 
         # 处理结果
@@ -348,22 +315,16 @@ async def jiuaidaikan(sess: requests.Session,
         if temp['correct'] != '未找到答案':
             answer.append(temp)
 
-        if one_time:
-            result.append(answer)
-        else:
-            logging.info("Yield question %s: %s" % (i+1, answer))
-            yield answer
+        logging.info("Yield question %s: %s" % (i+1, answer))
+        index = yield answer
 
         await asyncio.sleep(0.5)
 
-    if one_time:
-        logging.info("Return result: %s" % result)
-        yield result
+    raise StopIteration
 
 
 async def wangke120(sess: requests.Session,
-                    *args: list,
-                    one_time: bool = True) -> list:
+                    *args: list) -> list:
     # 输入参数处理
     if not isinstance(sess, requests.Session):
         args = list(args)
@@ -375,9 +336,11 @@ async def wangke120(sess: requests.Session,
     url = "https://wangke120.com/selectCxDb.php"
 
     # 接口参数
-    result = []
+    index = yield
     data = {}
     for i in range(len(args)):
+        if index and i < index:
+            continue
         data['question'] = args[i]
 
         # post请求
@@ -389,10 +352,7 @@ async def wangke120(sess: requests.Session,
             logging.info("Request Exception appeared: %s" % e)
             answer = []
             answer.append({'topic': str(e), 'correct': ''})
-            if one_time:
-                result.append(answer)
-            else:
-                yield answer
+            index = yield answer
             continue
 
         # 处理结果
@@ -403,17 +363,12 @@ async def wangke120(sess: requests.Session,
         temp['correct'] = res.text
         if temp['correct'] != '未找到':
             answer.append(temp)
-        if one_time:
-            result.append(answer)
-        else:
-            logging.info("Yield question %s: %s" % (i+1, answer))
-            yield answer
+        logging.info("Yield question %s: %s" % (i+1, answer))
+        index = yield answer
 
         await asyncio.sleep(0.5)
 
-    if one_time:
-        logging.info("Return result: %s" % result)
-        yield result
+    raise StopIteration
 
 
 async def cmd():
@@ -458,28 +413,27 @@ async def cmd():
                            % each.split("=")[0])
 
         # 获取答案
-        answer = []
+        answer = [[] for i in range(len(text))]
         if not search:
             for each in api_list.keys():
-                if text:
-                    index = 0
-                    result = await api_list[each](*text)
+                remain = [text[i] for i in range(len(text)) if not answer[i]]
+                if remain:
+                    generator = api_list[each](*remain)
                     for i in range(len(text)):
-                        if not result[i] or not result[i][0]['correct']:
-                            index += 1
+                        result = await generator.asend(None)
+                        if not result or not result[0]['correct']:
+                            continue
                         else:
-                            answer.append(result[i])
-                            text.pop(index)
+                            answer[i] = result
         else:
             if text:
-                result = await search(*text)
-                if not result:
-                    return
+                generator = search(*text)
                 for i in range(len(text)):
-                    if not result[i] or not result[i][0]['correct']:
+                    result = await generator.asend(None)
+                    if not result or not result[0]['correct']:
                         answer.append([])
                     else:
-                        answer.append(result[i])
+                        answer.append(result)
 
         if not JSON:
             print(answer)

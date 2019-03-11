@@ -130,52 +130,49 @@ class App():
         frame_list = [self.show_frame(frame_root) for i in range(len(text))]
         frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
 
-        def _previous(frame_list):
-            nonlocal index
+        def _previous(event):
+            nonlocal index, frame_list
             if index > 0:
                 frame_list[index].pack_forget()
                 index -= 1
                 frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
 
-        def _next(frame_list):
-            nonlocal index
-            if index < len(frame_list):
+        def _next(event):
+            nonlocal index, frame_list
+            if index < len(frame_list) - 1:
                 frame_list[index].pack_forget()
                 index += 1
                 frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
 
-        previous_button.bind('<ButtonRelease-1>', lambda x: _previous(frame_list))
-        next_button.bind('<ButtonRelease-1>', lambda x: _next(frame_list))
+        previous_button.bind('<ButtonRelease-1>', _previous)
+        next_button.bind('<ButtonRelease-1>', _next)
         self.start_coroutine(self.search(frame_list))
 
     async def search(self, frame_list):
         text = self.text1.get(1.0, END).strip(' \n\r').split('\n')
         if self.v1.get() == "自动选择":
-            for each in self.api_list.keys():
-                if text:
-                    index = 0
-                    for toplevel in canvas_list:
-                        label = toplevel.children['!canvas'].children['!frame'].children['!label']
-                        label['text'] = label['text'] + "查询中。。。使用源%s\n" % each
-                    result = await self.api_list[each](self.sess, *text)
-                    for i in range(len(text)):
-                        label = canvas_list[index].children['!canvas'].children['!frame'].children['!label']
-                        if not result[i]:
-                            label['text'] = label['text'] + "源%s未查询到答案\n" % each
-                            index += 1
-                        elif not result[i][0]['correct']:
-                            label['text'] = label['text'] + result[i][0]['topic'] + '\n'
-                            label['text'] = label['text'] + "源%s未查询到答案\n" % each
-                            index += 1
-                        else:
-                            for answer in result[i]:
-                                label['text'] = label['text'] + answer['topic'] + '\n'
-                                label['text'] = label['text'] + '答案:' + answer['correct'] + '\n'
-                            canvas_list.pop(index)
-                            text.pop(index)
+            generator_list = {}
+            for api in self.api_list.keys():
+                generator_list[api] = self.api_list[api](self.sess, *text)
+                await generator_list[api].asend(None)
+            for i in range(len(text)):
+                label = frame_list[i].children['!canvas'].children['!frame'].children['!label']
+                for generator in generator_list.keys():
+                    label['text'] = label['text'] + "查询中。。。使用源%s\n" % generator
+                    result = await generator_list[generator].asend(i)
+                    if not result:
+                        label['text'] = label['text'] + "源%s未查询到答案\n" % generator
+                    elif not result[0]['correct']:
+                        label['text'] = label['text'] + result[0]['topic'] + '\n'
+                        label['text'] = label['text'] + "源%s未查询到答案\n" % generator
+                    else:
+                        for answer in result:
+                            label['text'] = label['text'] + answer['topic'] + '\n'
+                            label['text'] = label['text'] + '答案:' + answer['correct'] + '\n'
+                        break
         else:
-            generator = self.api_list[self.v1.get()](self.sess,
-                                                     *text, one_time=False)
+            generator = self.api_list[self.v1.get()](self.sess, *text)
+            await generator.asend(None)
             for i in range(len(text)):
                 label = frame_list[i].children['!canvas'].children['!frame'].children['!label']
                 label['text'] = label['text'] + "查询中。。。使用源%s\n" % self.v1.get()
@@ -189,6 +186,9 @@ class App():
                     for each in result:
                         label['text'] = label['text'] + each['topic'] + '\n'
                         label['text'] = label['text'] + '答案:' + each['correct'] + '\n'
+
+        loop = asyncio.get_event_loop()
+        loop.call_soon_threadsafe(loop.stop)
 
     def show_frame(self, frame_root):
         # 总体框架
