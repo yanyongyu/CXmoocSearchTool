@@ -17,6 +17,8 @@ from hashlib import md5
 import requests
 from lxml import etree
 
+import utils
+
 requests.packages.urllib3.disable_warnings()
 
 
@@ -47,7 +49,8 @@ async def cxmooc_tool(sess: requests.Session,
         logging.info("Request Exception appeared: %s" % e)
         for each in args:
             answer = []
-            answer.append({'topic': str(e), 'correct': ''})
+            answer.append({'topic': utils.decode_uri_component(e),
+                           'correct': ''})
             yield answer
         raise StopIteration
 
@@ -99,7 +102,8 @@ async def poxiaobbs(sess: requests.Session,
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
             answer = []
-            answer.append({'topic': str(e), 'correct': ''})
+            answer.append({'topic': utils.decode_uri_component(e),
+                           'correct': ''})
             index = yield answer
             continue
 
@@ -155,7 +159,8 @@ async def forestpolice(sess: requests.Session,
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
             answer = []
-            answer.append({'topic': str(e), 'correct': ''})
+            answer.append({'topic': utils.decode_uri_component(e),
+                           'correct': ''})
             index = yield answer
             continue
 
@@ -213,7 +218,8 @@ async def bankroft(sess: requests.Session,
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
             answer = []
-            answer.append({'topic': str(e), 'correct': ''})
+            answer.append({'topic': utils.decode_uri_component(e),
+                           'correct': ''})
             index = yield answer
             continue
 
@@ -277,7 +283,8 @@ async def jiuaidaikan(sess: requests.Session,
             if index and i < index:
                 continue
             answer = []
-            answer.append({'topic': str(e), 'correct': ''})
+            answer.append({'topic': utils.decode_uri_component(e),
+                           'correct': ''})
             yield answer
         raise StopIteration
 
@@ -301,7 +308,8 @@ async def jiuaidaikan(sess: requests.Session,
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
             answer = []
-            answer.append({'topic': str(e), 'correct': ''})
+            answer.append({'topic': utils.decode_uri_component(e),
+                           'correct': ''})
             index = yield answer
             continue
 
@@ -351,7 +359,8 @@ async def wangke120(sess: requests.Session,
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
             answer = []
-            answer.append({'topic': str(e), 'correct': ''})
+            answer.append({'topic': utils.decode_uri_component(e),
+                           'correct': ''})
             index = yield answer
             continue
 
