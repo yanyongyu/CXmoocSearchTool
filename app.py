@@ -100,10 +100,42 @@ class App():
         frame3 = Frame(self.root, style='White.TFrame')
         frame3.pack(side=BOTTOM, fill=X)
         button1 = Button(frame3, text="查询", command=self.start_search, style='TButton')
-        button1.pack(side=TOP)
+        button1.pack(side=LEFT, expand=True)
+
+        button2 = Button(frame3, text="加入我们", command=self.contact_us, style='TButton')
+        button2.pack(side=RIGHT)
 
         self.root.update()
         self.root.mainloop()
+
+    def contact_us(self):
+        top = Toplevel(self.root)
+        top.geometry('350x150')
+        top.resizable(False, False)
+        frame = Frame(top)
+        frame.pack(fill=BOTH)
+
+        Label(frame, text="全自动插件下载/作者：CodFrm").pack()
+        self.plugin = StringVar()
+        self.plugin.set("https://github.com/CodFrm/cxmooc-tools/releases")
+        entry1 = Entry(frame, width=50, textvariable=self.plugin)
+        entry1.pack()
+        entry1['state'] = "readonly"
+
+        Label(frame, text="本软件更新下载地址/作者：Joker").pack()
+        self.download = StringVar()
+        self.download.set("https://github.com/yanyongyu/CXmoocSearchTool/releases")
+        entry2 = Entry(frame, width=50, textvariable=self.download)
+        entry2.pack()
+        entry2['state'] = "readonly"
+
+        Label(frame, text="QQ群号：").pack(side=LEFT)
+        self.qq = StringVar()
+        self.qq.set("614202391")
+        entry3 = Entry(frame, textvariable=self.qq)
+        entry3.pack(side=LEFT)
+        entry3['state'] = "readonly"
+
 
     def start_search(self):
         text = self.text1.get(1.0, END).strip(' \n\r').split('\n')
