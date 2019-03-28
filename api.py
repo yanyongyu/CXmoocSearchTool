@@ -95,7 +95,7 @@ async def poxiaobbs(sess: requests.Session,
         data['tm'] = args[i]
 
         # post请求
-        logging.info("Post to poxiao bbs php. Question %d" % i+1)
+        logging.info("Post to poxiao bbs php. Question %d" % i)
         try:
             res = sess.post(url, data=data, verify=False)
             res.raise_for_status()
