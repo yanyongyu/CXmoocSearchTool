@@ -9,6 +9,12 @@ https://github.com/CodFrm/cxmooc-tools
 
 可在插件题库未能找到答案或考试时使用
 
+## exe功能
+多来源题库查询
+
+批量查询
+
+窗口置顶
 
 ## api.py
 有python环境的可以只下载api.py

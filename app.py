@@ -62,7 +62,7 @@ class App():
         sh = self.root.winfo_screenheight()
         x = (sw - 1000) / 2 - 25
         y = (sh - 590) / 2 - 25
-        self.root.geometry('%dx%d+%d+%d' % (1000, 590, x, y))
+        self.root.geometry('%dx%d+%d+%d' % (590, 140, x, y))
         self.root.resizable(False, False)
 
         # style初始化
@@ -74,8 +74,8 @@ class App():
         # 提示框
         frame1 = Frame(self.root)
         frame1.pack(side=TOP, fill=X)
-        label1 = Label(frame1, text="请将题目复制到下方输入框，每一行一道题（不带题型）, 题目过长自动换行不影响")
-        label1.pack(side=LEFT, fill=BOTH)
+        button = Button(frame1, text="使用说明", command=self.usage)
+        button.pack(padx=3, side=LEFT, fill=BOTH)
         options = list(self.api_list.keys())
         options.insert(0, "自动选择")
         self.v1 = StringVar()
@@ -92,24 +92,54 @@ class App():
 
         # 输入框
         frame2 = Frame(self.root, style='White.TFrame')
-        frame2.pack(side=TOP, fill=BOTH)
-        self.text1 = Text(frame2, height=19, borderwidth=3, font=('微软雅黑', 15))
-        self.text1.pack(padx=2, pady=5, side=LEFT, fill=BOTH, expand=True)
-        self.text1.focus_set()
-        vbar_y = AutoShowScrollbar(frame2, orient=VERTICAL)
-        vbar_y.pack(fill=Y, side=RIGHT, expand=False)
-        vbar_y.config(command=self.text1.yview)
-        self.text1.configure(yscrollcommand=vbar_y.set)
-        self.text1.bind("<ButtonRelease-2>", lambda x: self.start_search())
+        frame2.pack(side=TOP, fill=BOTH, expand=True)
+        # 显示画布
+        canvas = Canvas(frame2, height=70)
+        canvas.pack(side=LEFT, fill=BOTH, expand=True)
+        # 内容框架
+        frame_in = Frame(canvas)
+        frame_id = canvas.create_window(0, 0, window=frame_in, anchor=NW)
 
-        # 界面鼠标滚动
-        def _scroll_text(event):
-            self.text1.yview_scroll(int(-event.delta / 60), 'units')
+        # 动态隐藏滚动条
+        vbar = AutoShowScrollbar(frame2, orient=VERTICAL)
+        vbar.pack(fill=Y, side=RIGHT, expand=False)
 
-        def _unscroll_text(event):
+        # 互相绑定滚动
+        vbar.config(command=canvas.yview)
+        canvas.configure(yscrollcommand=vbar.set)
+
+        # 界面鼠标滚动函数
+        def _scroll_canvas(event):
+            canvas.yview_scroll(int(-event.delta / 60), 'units')
+
+        def _unscroll_canvas(event):
             return 'break'
 
-        self.text1.bind('<MouseWheel>', _scroll_text)
+        # 内容框架大小适配
+        def _configure_frame(event):
+            # 更新画布的滚动范围以适配内部框架
+            size = (frame_in.winfo_reqwidth(), frame_in.winfo_reqheight())
+            canvas.config(scrollregion="0 0 %s %s" % size)
+            if frame_in.winfo_reqwidth() != canvas.winfo_width():
+                # 更新画布大小以适配内部框架
+                canvas.config(width=frame_in.winfo_reqwidth())
+            if frame_in.winfo_reqheight() < canvas.winfo_height():
+                canvas.bind_all('<MouseWheel>', _unscroll_canvas)
+            else:
+                canvas.bind_all('<MouseWheel>', _scroll_canvas)
+
+        def _configure_canvas(event):
+            if frame_in.winfo_reqwidth() != canvas.winfo_width():
+                # 更新内部框架大小以适配画布大小
+                canvas.itemconfigure(frame_id, width=canvas.winfo_width())
+
+        frame_in.bind('<Configure>', _configure_frame)
+        canvas.bind('<Configure>', _configure_canvas)
+        canvas.bind_all('<MouseWheel>', _scroll_canvas)
+        canvas.bind_all("<ButtonRelease-2>", lambda x: self.start_search())
+
+        self.text1 = Text(frame_in, height=2, borderwidth=3, font=('微软雅黑', 15))
+        self.text1.pack(padx=2, pady=5, fill=BOTH)
 
         # 查询按钮框
         frame3 = Frame(self.root, style='White.TFrame')
@@ -125,14 +155,29 @@ class App():
 
     def root_top_show(self):
         if self.isTop.get():
-            self.root.wm_attributes('-topmost', 1)
+            self.root.wm_attributes('-topmost', 0)
         else:
             self.root.wm_attributes('-topmost', 1)
+
+    def usage(self):
+        top = Toplevel(self.root)
+        top.geometry('350x150')
+        top.resizable(False, False)
+        top.wm_attributes('-topmost', 1)
+        frame = Frame(top)
+        frame.pack(fill=BOTH)
+
+        Label(frame, text="复制题目到输入框，一个输入框只能输入一题!").pack()
+        Label(frame, text="如需多题查询点击 + 号增加输入框。").pack()
+        Label(frame, text="本软件自动检测更新并跳转，但请手动下载。").pack()
+        Label(frame, text="目前题库包含超星尔雅、知到智慧树。").pack()
+        Label(frame, text="如遇到问题请加群联系，群号在加入我们中。").pack()
 
     def contact_us(self):
         top = Toplevel(self.root)
         top.geometry('350x150')
         top.resizable(False, False)
+        top.wm_attributes('-topmost', 1)
         frame = Frame(top)
         frame.pack(fill=BOTH)
 
