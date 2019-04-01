@@ -5,7 +5,7 @@ GUI app
 """
 
 __author__ = "yanyongyu"
-__version__ = "1.4"
+__version__ = "1.2"
 
 import asyncio
 import logging
@@ -373,6 +373,8 @@ class App():
                     if askyesno(title="超星查题助手",
                                 message="发现新版本！是否前去更新？"):
                         webbrowser.open(info['html_url'])
+                        if info['assets'][0]['name'].endswith('.exe'):
+                            webbrowser.open(info['assets'][0]['browser_download_url'])
                     break
         finally:
             loop = asyncio.get_event_loop()
