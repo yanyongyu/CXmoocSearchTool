@@ -28,11 +28,15 @@ class AutoShowScrollbar(Scrollbar):
             # grid_remove is currently missing from Tkinter!
             self.tk.call("pack", "forget", self)
         else:
-            self.pack(fill=Y,side=RIGHT,expand=False)
+            self.pack(fill=Y, side=RIGHT, expand=False)
         Scrollbar.set(self, lo, hi)
 
 
 class App():
+    PLUGIN_CX_URL = "https://github.com/CodFrm/cxmooc-tools/releases"
+    TOOL_URL = "https://github.com/yanyongyu/CXmoocSearchTool/releases"
+    ISSUE_URL = "https://github.com/yanyongyu/CXmoocSearchTool/issues"
+    QQ_URL = "https://jq.qq.com/?_wv=1027&k=5FPg14d"
 
     def __init__(self):
         # 加载api
@@ -53,7 +57,10 @@ class App():
                    'Chrome/72.0.3626.119 Safari/537.36'}
         self.sess.headers.update(headers)
 
-        self.start_coroutine(self.scan_release())
+        # 初始化text列表
+        self.text = []
+
+        self.start_coroutine(self.scan_release(True))
         self.show()
 
     def show(self):
@@ -63,7 +70,7 @@ class App():
         sh = self.root.winfo_screenheight()
         x = (sw - 1000) / 2 - 25
         y = (sh - 590) / 2 - 25
-        self.root.geometry('%dx%d+%d+%d' % (590, 140, x, y))
+        self.root.geometry('%dx%d+%d+%d' % (600, 100, x, y))
         self.root.resizable(False, False)
 
         # style初始化
@@ -85,6 +92,14 @@ class App():
             api_menu.add_checkbutton(label=api, variable=self.api_on[api])
         menu.add_cascade(label="题库来源", menu=api_menu)
 
+        # 插件菜单
+        plugin_menu = Menu(menu, tearoff=0)
+        plugin_menu.add_cascade(
+                label="超星",
+                command=lambda: webbrowser.open(App.PlUGIN_CX_URL)
+                )
+        menu.add_cascade(label="浏览器插件", menu=plugin_menu)
+
         # 选项菜单
         option_menu = Menu(menu, tearoff=0)
         self.isTop = IntVar()
@@ -97,30 +112,41 @@ class App():
         # 帮助菜单
         help_menu = Menu(menu, tearoff=0)
         help_menu.add_command(label="使用说明", command=self.usage)
-        help_menu.add_command(label="检查更新")
-        help_menu.add_command(label="反馈问题")
-        help_menu.add_command(label="加入我们", command=self.contact_us)
+        help_menu.add_command(
+                label="检查更新",
+                command=lambda: self.start_coroutine(self.scan_release(False))
+                )
+        help_menu.add_command(
+                label="反馈问题",
+                command=lambda: webbrowser.open(App.ISSUE_URL)
+                )
+        help_menu.add_command(
+                label="加入我们",
+                command=lambda: webbrowser.open(App.QQ_URL)
+                )
         menu.add_cascade(label="帮助", menu=help_menu)
 
         self.root['menu'] = menu
 
-        # 提示框
-        frame1 = Frame(self.root)
-        frame1.pack(side=TOP, fill=X)
-        options = list(self.api_list.keys())
-        options.insert(0, "自动选择")
-        self.v1 = StringVar()
-        menu1 = OptionMenu(frame1, self.v1, options[0], *options)
-        menu1.pack(side=RIGHT, fill=BOTH)
-        label2 = Label(frame1, text="选择题库来源:")
-        label2.pack(padx=3, side=RIGHT, fill=BOTH)
+# =============================================================================
+#         # 提示框
+#         frame1 = Frame(self.root)
+#         frame1.pack(side=TOP, fill=X)
+#         options = list(self.api_list.keys())
+#         options.insert(0, "自动选择")
+#         self.v1 = StringVar()
+#         menu1 = OptionMenu(frame1, self.v1, options[0], *options)
+#         menu1.pack(side=RIGHT, fill=BOTH)
+#         label2 = Label(frame1, text="选择题库来源:")
+#         label2.pack(padx=3, side=RIGHT, fill=BOTH)
+# =============================================================================
 
         # 输入框
         frame2 = Frame(self.root, style='White.TFrame')
         frame2.pack(side=TOP, fill=BOTH, expand=True)
         # 显示画布
         canvas = Canvas(frame2, height=70)
-        canvas.pack(side=LEFT, fill=BOTH, expand=True)
+        canvas.pack(side=LEFT, fill=X, expand=True)
         # 内容框架
         frame_in = Frame(canvas)
         frame_id = canvas.create_window(0, 0, window=frame_in, anchor=NW)
@@ -148,7 +174,11 @@ class App():
             if frame_in.winfo_reqwidth() != canvas.winfo_width():
                 # 更新画布大小以适配内部框架
                 canvas.config(width=frame_in.winfo_reqwidth())
-            if frame_in.winfo_reqheight() < canvas.winfo_height():
+            if len(self.text) <= 3:
+                self.root.geometry('%dx%d' % (600, 30 + 70*len(self.text)))
+                canvas.config(height=frame_in.winfo_reqheight())
+                canvas.bind_all('<MouseWheel>', _unscroll_canvas)
+            elif frame_in.winfo_reqheight() < canvas.winfo_height():
                 canvas.bind_all('<MouseWheel>', _unscroll_canvas)
             else:
                 canvas.bind_all('<MouseWheel>', _scroll_canvas)
@@ -163,8 +193,26 @@ class App():
         canvas.bind_all('<MouseWheel>', _scroll_canvas)
         canvas.bind_all("<ButtonRelease-2>", lambda x: self.start_search())
 
-        self.text1 = Text(frame_in, height=2, borderwidth=3, font=('微软雅黑', 15))
-        self.text1.pack(padx=2, pady=5, fill=BOTH)
+        def _delete_entry(event):
+            button = event.widget
+            frame = button.master
+            if len(self.text) > 1:
+                self.text.remove(frame.children['!text'])
+                frame.forget()
+
+        def _create_entry():
+            frame = Frame(frame_in)
+            frame.pack(side=TOP, expand=True)
+            text = Text(frame, height=2, width=45, borderwidth=2, font=('微软雅黑', 15))
+            text.grid(row=0, column=0, padx=2, pady=5, rowspan=2)
+            delete_button = Button(frame, text="-", width=2)
+            delete_button.grid(row=0, column=1, padx=2, pady=2)
+            delete_button.bind("<Button-1>", _delete_entry)
+            add_button = Button(frame, text="+", width=2, command=_create_entry)
+            add_button.grid(row=1, column=1, padx=2, pady=2)
+            self.text.append(text)
+
+        _create_entry()
 
         # 查询按钮框
         frame3 = Frame(self.root, style='White.TFrame')
@@ -177,9 +225,9 @@ class App():
 
     def root_top_show(self):
         if self.isTop.get():
-            self.root.wm_attributes('-topmost', 0)
-        else:
             self.root.wm_attributes('-topmost', 1)
+        else:
+            self.root.wm_attributes('-topmost', 0)
 
     def usage(self):
         top = Toplevel(self.root)
@@ -191,43 +239,12 @@ class App():
 
         Label(frame, text="复制题目到输入框，一个输入框只能输入一题!").pack()
         Label(frame, text="如需多题查询点击 + 号增加输入框。").pack()
-        Label(frame, text="本软件自动检测更新并跳转，但请手动下载。").pack()
+        Label(frame, text="本软件自动检测更新").pack()
         Label(frame, text="目前题库包含超星尔雅、知到智慧树。").pack()
-        Label(frame, text="如遇到问题请加群联系，群号在加入我们中。").pack()
-
-    def contact_us(self):
-        top = Toplevel(self.root)
-        top.geometry('350x150')
-        top.resizable(False, False)
-        top.wm_attributes('-topmost', 1)
-        frame = Frame(top)
-        frame.pack(fill=BOTH)
-
-        Label(frame, text="全自动插件下载/作者：CodFrm").pack()
-        self.plugin = StringVar()
-        self.plugin.set("https://github.com/CodFrm/cxmooc-tools/releases")
-        entry1 = Entry(frame, width=50, textvariable=self.plugin)
-        entry1.pack()
-        entry1['state'] = "readonly"
-        entry1.bind("<ButtonRelease-1>", lambda x: webbrowser.open(self.plugin.get()))
-
-        Label(frame, text="本软件更新下载地址/作者：Joker").pack()
-        self.download = StringVar()
-        self.download.set("https://github.com/yanyongyu/CXmoocSearchTool/releases")
-        entry2 = Entry(frame, width=50, textvariable=self.download)
-        entry2.pack()
-        entry2['state'] = "readonly"
-        entry2.bind("<ButtonRelease-1>", lambda x: webbrowser.open(self.download.get()))
-
-        Label(frame, text="QQ群号：").pack(side=LEFT)
-        self.qq = StringVar()
-        self.qq.set("614202391")
-        entry3 = Entry(frame, textvariable=self.qq)
-        entry3.pack(side=LEFT)
-        entry3['state'] = "readonly"
+        Label(frame, text="如遇到问题请点击帮助-反馈问题或点击加入我们加群反馈").pack()
 
     def start_search(self):
-        text = self.text1.get(1.0, END).strip(' \n\r').split('\n')
+        text = [each.get(1.0, END).strip(' \n\r') for each in self.text]
         logging.info("Text get: %s" % text)
         index = 0
 
@@ -271,38 +288,24 @@ class App():
         self.start_coroutine(self.search(frame_list))
 
     async def search(self, frame_list):
-        text = self.text1.get(1.0, END).strip(' \n\r').split('\n')
-        if self.v1.get() == "自动选择":
-            generator_list = {}
-            for api in self.api_list.keys():
+        text = [each.get(1.0, END).strip(' \n\r') for each in self.text]
+        # 初始化async迭代器
+        generator_list = {}
+        for api in self.api_list.keys():
+            if self.api_on[api].get():
                 generator_list[api] = self.api_list[api](self.sess, *text)
                 await generator_list[api].asend(None)
-            for i in range(len(text)):
-                label = frame_list[i].children['!canvas'].children['!frame'].children['!label']
-                for generator in generator_list.keys():
-                    label['text'] = label['text'] + "查询中。。。使用源%s\n" % generator
-                    result = await generator_list[generator].asend(i)
-                    if result and result[0]['correct']:
-                        for answer in result:
-                            label['text'] = label['text'] + answer['topic'] + '\n'
-                            label['text'] = label['text'] + '答案:' + answer['correct'] + '\n'
-                        break
-        else:
-            generator = self.api_list[self.v1.get()](self.sess, *text)
-            await generator.asend(None)
-            for i in range(len(text)):
-                label = frame_list[i].children['!canvas'].children['!frame'].children['!label']
-                label['text'] = label['text'] + "查询中。。。使用源%s\n" % self.v1.get()
-                result = await generator.asend(None)
-                if not result:
-                    label['text'] = label['text'] + "源%s未查询到答案" % self.v1.get()
-                elif not result[0]['correct']:
-                    label['text'] = label['text'] + result[0]['topic'] + '\n'
-                    label['text'] = label['text'] + "源%s未查询到答案" % self.v1.get()
-                else:
-                    for each in result:
-                        label['text'] = label['text'] + each['topic'] + '\n'
-                        label['text'] = label['text'] + '答案:' + each['correct'] + '\n'
+        for i in range(len(text)):
+            label = frame_list[i].children['!canvas'].children['!frame'].children['!label']
+            for generator in generator_list.keys():
+                label['text'] = label['text'] + "查询中。。。使用源%s\n" % generator
+                result = await generator_list[generator].asend(i)
+                if result and result[0]['correct']:
+                    for answer in result:
+                        label['text'] = label['text'] + answer['topic'] + '\n'
+                        label['text'] = label['text'] + '答案:' + answer['correct'] + '\n'
+                    break
+
 
         loop = asyncio.get_event_loop()
         loop.call_soon_threadsafe(loop.stop)
@@ -372,7 +375,7 @@ class App():
 
         asyncio.run_coroutine_threadsafe(coroutine, self.loop)
 
-    async def scan_release(self):
+    async def scan_release(self, silence):
         URL = "https://api.github.com/repos/"\
             "yanyongyu/CXmoocSearchTool/releases/latest"
         try:
@@ -386,6 +389,11 @@ class App():
             info = res.json()
             latest = info['tag_name'].strip("v").split('.')
             now = __version__.split('.')
+            if latest == now:
+                if not silence:
+                    showinfo(title="超星查题助手",
+                             message="已是最新版本！无需更新。")
+                return
             if len(latest) < len(now):
                 latest.append('0')
             elif len(latest) > len(now):
