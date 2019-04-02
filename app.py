@@ -5,7 +5,7 @@ GUI app
 """
 
 __author__ = "yanyongyu"
-__version__ = "1.2"
+__version__ = "1.4"
 
 import asyncio
 import logging
@@ -37,6 +37,7 @@ class App():
     def __init__(self):
         # 加载api
         self.api_list = {}
+        self.api_on = {}
         for attr in dir(api):
             if attr.startswith('_'):
                 continue
@@ -68,14 +69,44 @@ class App():
         # style初始化
         style = Style()
         style.configure('White.TFrame', background='white')
+        style.configure('TMenu', font=('微软雅黑', 12))
         style.configure('TLabel', font=('微软雅黑', 12))
         style.configure('TButton', font=('微软雅黑', 12))
+
+        # 菜单栏
+        # 顶级菜单
+        menu = Menu(self.root)
+
+        # api子菜单
+        api_menu = Menu(menu, tearoff=0)
+        for api in self.api_list.keys():
+            self.api_on[api] = IntVar()
+            self.api_on[api].set(1)
+            api_menu.add_checkbutton(label=api, variable=self.api_on[api])
+        menu.add_cascade(label="题库来源", menu=api_menu)
+
+        # 选项菜单
+        option_menu = Menu(menu, tearoff=0)
+        self.isTop = IntVar()
+        self.isTop.set(0)
+        option_menu.add_checkbutton(
+                label="窗口置顶", variable=self.isTop,
+                command=self.root_top_show)
+        menu.add_cascade(label="选项", menu=option_menu)
+
+        # 帮助菜单
+        help_menu = Menu(menu, tearoff=0)
+        help_menu.add_command(label="使用说明", command=self.usage)
+        help_menu.add_command(label="检查更新")
+        help_menu.add_command(label="反馈问题")
+        help_menu.add_command(label="加入我们", command=self.contact_us)
+        menu.add_cascade(label="帮助", menu=help_menu)
+
+        self.root['menu'] = menu
 
         # 提示框
         frame1 = Frame(self.root)
         frame1.pack(side=TOP, fill=X)
-        button = Button(frame1, text="使用说明", command=self.usage)
-        button.pack(padx=3, side=LEFT, fill=BOTH)
         options = list(self.api_list.keys())
         options.insert(0, "自动选择")
         self.v1 = StringVar()
@@ -83,12 +114,6 @@ class App():
         menu1.pack(side=RIGHT, fill=BOTH)
         label2 = Label(frame1, text="选择题库来源:")
         label2.pack(padx=3, side=RIGHT, fill=BOTH)
-
-        self.isTop = IntVar()
-        self.isTop.set(0)
-        checkbutton = Checkbutton(frame1, text="窗口置顶", variable=self.isTop)
-        checkbutton.pack(padx=3, side=RIGHT, fill=BOTH)
-        checkbutton.bind("<ButtonRelease-1>", lambda x: self.root_top_show())
 
         # 输入框
         frame2 = Frame(self.root, style='White.TFrame')
@@ -146,9 +171,6 @@ class App():
         frame3.pack(side=BOTTOM, fill=X)
         button1 = Button(frame3, text="查询", command=self.start_search, style='TButton')
         button1.pack(side=LEFT, expand=True)
-
-        button2 = Button(frame3, text="加入我们", command=self.contact_us, style='TButton')
-        button2.pack(side=RIGHT)
 
         self.root.update()
         self.root.mainloop()
