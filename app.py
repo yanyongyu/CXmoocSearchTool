@@ -5,7 +5,7 @@ GUI app
 """
 
 __author__ = "yanyongyu"
-__version__ = "1.4"
+__version__ = "1.5"
 
 import asyncio
 import logging
@@ -96,7 +96,7 @@ class App():
         plugin_menu = Menu(menu, tearoff=0)
         plugin_menu.add_cascade(
                 label="超星",
-                command=lambda: webbrowser.open(App.PlUGIN_CX_URL)
+                command=lambda: webbrowser.open(App.PLUGIN_CX_URL)
                 )
         menu.add_cascade(label="浏览器插件", menu=plugin_menu)
 
