@@ -22,7 +22,7 @@ import api
 
 
 class AutoShowScrollbar(Scrollbar):
-    # 如果不需要滚动条则会自动隐藏
+    "会自动隐藏的滚动条"
     def set(self, lo, hi):
         if float(lo) <= 0.0 and float(hi) >= 1.0:
             # grid_remove is currently missing from Tkinter!
@@ -38,6 +38,35 @@ class App():
     ISSUE_URL = "https://github.com/yanyongyu/CXmoocSearchTool/issues"
     QQ_URL = "https://jq.qq.com/?_wv=1027&k=5FPg14d"
 
+    UNFREEZE_JS = r"""
+var a=function () {
+    var _0x320a = ["body", "onselectstart", "oncopy", "onpaste", "onkeydown", "oncontextmenu", "onmousemove", "ondragstart", "onmousedown", "wrappedJSObject", "*", "getElementsByTagName", "length", "%u5DF2%u89E3%u9664%u590D%u5236%u4E0E%u53F3%u952E%u9650%u5236%uFF01", "\x0D", "%u6B22%u8FCE%u52A0%u5165QQ%u7FA4%u804A%uFF1A614202391", "", "webkitUserSelect", "style", "auto!important", "MozUserSelect", "normal!important"];
+    var doc = document;
+    var bd = doc[_0x320a[0]];
+    bd[_0x320a[1]] = bd[_0x320a[2]] = bd[_0x320a[3]] = bd[_0x320a[4]] = bd[_0x320a[5]] = bd[_0x320a[6]] = bd[_0x320a[1]] = bd[_0x320a[7]] = doc[_0x320a[1]] = doc[_0x320a[2]] = doc[_0x320a[3]] = doc[_0x320a[4]] = doc[_0x320a[5]] = null;
+    doc[_0x320a[1]] = doc[_0x320a[5]] = doc[_0x320a[8]] = doc[_0x320a[4]] = function () {
+        return true;
+    };
+    with(document[_0x320a[9]] || document) {
+        onmouseup = null;
+        onmousedown = null;
+        oncontextmenu = null;
+    };
+    var arAllElements = document[_0x320a[11]](_0x320a[10]);
+    for (var i = arAllElements[_0x320a[12]] - 1; i >= 0; i--) {
+        var elmOne = arAllElements[i];
+        with(elmOne[_0x320a[9]] || elmOne) {
+            onmouseup = null;
+            onmousedown = null;
+        };
+    };
+    alert(unescape(_0x320a[13]) + _0x320a[14] + unescape(_0x320a[15]));
+    bd[_0x320a[18]][_0x320a[17]] = _0x320a[19];
+    bd[_0x320a[18]][_0x320a[20]] = _0x320a[21];
+}
+a()
+"""
+
     def __init__(self):
         # 加载api
         self.api_list = {}
@@ -46,9 +75,8 @@ class App():
             if attr.startswith('_'):
                 continue
             fn = getattr(api, attr)
-            if callable(fn):
-                if getattr(fn, '__annotations__', None):
-                    self.api_list[attr] = fn
+            if callable(fn) and getattr(fn, '__annotations__', None):
+                self.api_list[attr] = fn
 
         # 初始化session
         self.sess = requests.Session()
@@ -64,13 +92,17 @@ class App():
         self.show()
 
     def show(self):
+        "显示主窗口"
         self.root = Tk()
         self.root.title("超星查题助手 -designed by ShowTime-Joker")
+        # 窗口居中坐标
         sw = self.root.winfo_screenwidth()
         sh = self.root.winfo_screenheight()
         x = (sw - 1000) / 2 - 25
         y = (sh - 590) / 2 - 25
-        self.root.geometry('%dx%d+%d+%d' % (600, 100, x, y))
+        # 宽、高、相对屏幕坐标
+        self.root.geometry('%dx%d+%d+%d' % (600, 105, x, y))
+        # 不允许缩放
         self.root.resizable(False, False)
 
         # style初始化
@@ -98,6 +130,10 @@ class App():
                 label="超星",
                 command=lambda: webbrowser.open(App.PLUGIN_CX_URL)
                 )
+        plugin_menu.add_cascade(
+                label="解除右键锁定",
+                command=lambda: self.unfreeze_js()
+                )
         menu.add_cascade(label="浏览器插件", menu=plugin_menu)
 
         # 选项菜单
@@ -106,7 +142,8 @@ class App():
         self.isTop.set(0)
         option_menu.add_checkbutton(
                 label="窗口置顶", variable=self.isTop,
-                command=self.root_top_show)
+                command=lambda: self.root_top_show()
+                )
         menu.add_cascade(label="选项", menu=option_menu)
 
         # 帮助菜单
@@ -127,19 +164,6 @@ class App():
         menu.add_cascade(label="帮助", menu=help_menu)
 
         self.root['menu'] = menu
-
-# =============================================================================
-#         # 提示框
-#         frame1 = Frame(self.root)
-#         frame1.pack(side=TOP, fill=X)
-#         options = list(self.api_list.keys())
-#         options.insert(0, "自动选择")
-#         self.v1 = StringVar()
-#         menu1 = OptionMenu(frame1, self.v1, options[0], *options)
-#         menu1.pack(side=RIGHT, fill=BOTH)
-#         label2 = Label(frame1, text="选择题库来源:")
-#         label2.pack(padx=3, side=RIGHT, fill=BOTH)
-# =============================================================================
 
         # 输入框
         frame2 = Frame(self.root, style='White.TFrame')
@@ -175,7 +199,7 @@ class App():
                 # 更新画布大小以适配内部框架
                 canvas.config(width=frame_in.winfo_reqwidth())
             if len(self.text) <= 3:
-                self.root.geometry('%dx%d' % (600, 30 + 70*len(self.text)))
+                self.root.geometry('%dx%d' % (600, 35 + 70*len(self.text)))
                 canvas.config(height=frame_in.winfo_reqheight())
                 canvas.bind_all('<MouseWheel>', _unscroll_canvas)
             elif frame_in.winfo_reqheight() < canvas.winfo_height():
@@ -193,6 +217,7 @@ class App():
         canvas.bind_all('<MouseWheel>', _scroll_canvas)
         canvas.bind_all("<ButtonRelease-2>", lambda x: self.start_search())
 
+        # 删除输入框
         def _delete_entry(event):
             button = event.widget
             frame = button.master
@@ -200,15 +225,18 @@ class App():
                 self.text.remove(frame.children['!text'])
                 frame.forget()
 
+        # 增加输入框
         def _create_entry():
             frame = Frame(frame_in)
             frame.pack(side=TOP, expand=True)
-            text = Text(frame, height=2, width=45, borderwidth=2, font=('微软雅黑', 15))
+            text = Text(frame, height=2, width=45,
+                        borderwidth=2, font=('微软雅黑', 15))
             text.grid(row=0, column=0, padx=2, pady=5, rowspan=2)
             delete_button = Button(frame, text="-", width=2)
             delete_button.grid(row=0, column=1, padx=2, pady=2)
             delete_button.bind("<Button-1>", _delete_entry)
-            add_button = Button(frame, text="+", width=2, command=_create_entry)
+            add_button = Button(frame, text="+", width=2,
+                                command=_create_entry)
             add_button.grid(row=1, column=1, padx=2, pady=2)
             self.text.append(text)
 
@@ -217,19 +245,21 @@ class App():
         # 查询按钮框
         frame3 = Frame(self.root, style='White.TFrame')
         frame3.pack(side=BOTTOM, fill=X)
-        button1 = Button(frame3, text="查询", command=self.start_search, style='TButton')
+        button1 = Button(frame3, text="查询", command=self.start_search)
         button1.pack(side=LEFT, expand=True)
 
         self.root.update()
         self.root.mainloop()
 
     def root_top_show(self):
+        "窗口置顶切换"
         if self.isTop.get():
             self.root.wm_attributes('-topmost', 1)
         else:
             self.root.wm_attributes('-topmost', 0)
 
     def usage(self):
+        "显示使用说明窗口"
         top = Toplevel(self.root)
         top.geometry('350x150')
         top.resizable(False, False)
@@ -241,9 +271,31 @@ class App():
         Label(frame, text="如需多题查询点击 + 号增加输入框。").pack()
         Label(frame, text="本软件自动检测更新").pack()
         Label(frame, text="目前题库包含超星尔雅、知到智慧树。").pack()
-        Label(frame, text="如遇到问题请点击帮助-反馈问题或点击加入我们加群反馈").pack()
+        Label(frame, text="如遇到问题请点击帮助-反馈问题").pack()
+        Label(frame, text="或点击加入我们加群反馈").pack()
+
+    def unfreeze_js(self):
+        "显示解除右键限制说明"
+        top = Toplevel(self.root)
+        top.geometry('350x150')
+        top.resizable(False, False)
+        top.wm_attributes('-topmost', 1)
+        frame = Frame(top)
+        frame.pack(fill=BOTH)
+
+        # 复制到剪切板
+        def _copy():
+            self.root.clipboard_clear()
+            self.root.clipboard_append(App.UNFREEZE_JS)
+
+        Label(frame, text="点击复制按钮，到浏览器页面").pack()
+        Label(frame, text="按F12或者Ctrl+Shift+i打开开发者工具").pack()
+        Label(frame, text="切换到Console栏粘贴并回车").pack()
+        Label(frame, text="提示成功即解除成功！部分浏览器可能不支持").pack()
+        Button(frame, text="点我复制", command=_copy).pack()
 
     def start_search(self):
+        "开始搜索，显示答案窗口"
         text = [each.get(1.0, END).strip(' \n\r') for each in self.text]
         logging.info("Text get: %s" % text)
         index = 0
@@ -269,6 +321,7 @@ class App():
         frame_list = [self.show_frame(frame_root) for i in range(len(text))]
         frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
 
+        # 上一题
         def _previous(event):
             nonlocal index, frame_list
             if index > 0:
@@ -276,6 +329,7 @@ class App():
                 index -= 1
                 frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
 
+        # 下一题
         def _next(event):
             nonlocal index, frame_list
             if index < len(frame_list) - 1:
@@ -285,6 +339,8 @@ class App():
 
         previous_button.bind('<ButtonRelease-1>', _previous)
         next_button.bind('<ButtonRelease-1>', _next)
+
+        # 开始搜索线程
         self.start_coroutine(self.search(frame_list))
 
     async def search(self, frame_list):
@@ -294,7 +350,10 @@ class App():
         for api in self.api_list.keys():
             if self.api_on[api].get():
                 generator_list[api] = self.api_list[api](self.sess, *text)
+                # 启动迭代器
                 await generator_list[api].asend(None)
+
+        # 查询答案
         for i in range(len(text)):
             label = frame_list[i].children['!canvas'].children['!frame'].children['!label']
             for generator in generator_list.keys():
@@ -306,7 +365,7 @@ class App():
                         label['text'] = label['text'] + '答案:' + answer['correct'] + '\n'
                     break
 
-
+        # 关闭协程池
         loop = asyncio.get_event_loop()
         loop.call_soon_threadsafe(loop.stop)
 
@@ -376,6 +435,7 @@ class App():
         asyncio.run_coroutine_threadsafe(coroutine, self.loop)
 
     async def scan_release(self, silence):
+        "检查更新"
         URL = "https://api.github.com/repos/"\
             "yanyongyu/CXmoocSearchTool/releases/latest"
         try:
