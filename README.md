@@ -16,6 +16,9 @@ https://github.com/CodFrm/cxmooc-tools
 
 窗口置顶
 
+## QQ群
+[614202391](https://shang.qq.com/wpa/qunwpa?idkey=9bddd2564d84bd999940de422d1c0c70f87ecaf02fe9d7c60389fc2b376179eb)
+
 ## api.py
 有python环境的可以只下载api.py
 ![GitHub file size in bytes](https://img.shields.io/github/size/yanyongyu/CXmoocSearchTool/api.py.svg)
