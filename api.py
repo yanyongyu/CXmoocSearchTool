@@ -17,8 +17,6 @@ from hashlib import md5
 import requests
 from lxml import etree
 
-import utils
-
 requests.packages.urllib3.disable_warnings()
 
 
@@ -49,7 +47,7 @@ async def cxmooc_tool(sess: requests.Session,
         logging.info("Request Exception appeared: %s" % e)
         for each in args:
             answer = []
-            answer.append({'topic': utils.decode_uri_component(str(e)),
+            answer.append({'topic': str(e),
                            'correct': ''})
             yield answer
         raise StopIteration
@@ -102,7 +100,7 @@ async def poxiaobbs(sess: requests.Session,
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
             answer = []
-            answer.append({'topic': utils.decode_uri_component(str(e)),
+            answer.append({'topic': str(e),
                            'correct': ''})
             index = yield answer
             continue
@@ -159,7 +157,7 @@ async def forestpolice(sess: requests.Session,
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
             answer = []
-            answer.append({'topic': utils.decode_uri_component(str(e)),
+            answer.append({'topic': str(e),
                            'correct': ''})
             index = yield answer
             continue
@@ -218,7 +216,7 @@ async def bankroft(sess: requests.Session,
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
             answer = []
-            answer.append({'topic': utils.decode_uri_component(str(e)),
+            answer.append({'topic': str(e),
                            'correct': ''})
             index = yield answer
             continue
@@ -283,7 +281,7 @@ async def jiuaidaikan(sess: requests.Session,
             if index and i < index:
                 continue
             answer = []
-            answer.append({'topic': utils.decode_uri_component(str(e)),
+            answer.append({'topic': str(e),
                            'correct': ''})
             yield answer
         raise StopIteration
@@ -308,7 +306,7 @@ async def jiuaidaikan(sess: requests.Session,
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
             answer = []
-            answer.append({'topic': utils.decode_uri_component(str(e)),
+            answer.append({'topic': str(e),
                            'correct': ''})
             index = yield answer
             continue
@@ -359,7 +357,7 @@ async def wangke120(sess: requests.Session,
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
             answer = []
-            answer.append({'topic': utils.decode_uri_component(str(e)),
+            answer.append({'topic': str(e),
                            'correct': ''})
             index = yield answer
             continue
@@ -372,6 +370,54 @@ async def wangke120(sess: requests.Session,
         temp['correct'] = res.text
         if temp['correct'] != '未找到':
             answer.append(temp)
+        logging.info("Yield question %s: %s" % (i+1, answer))
+        index = yield answer
+
+        await asyncio.sleep(0.5)
+
+    raise StopIteration
+
+
+async def fm210(sess: requests.Session,
+                *args: list) -> list:
+    # 输入参数处理
+    if not isinstance(sess, requests.Session):
+        args = list(args)
+        args.insert(0, sess)
+        args = tuple(args)
+        sess = requests.Session()
+
+    # 接口
+    url = "http://api.fm210.cn/wangke/cx.php?"
+
+    # 接口参数
+    index = yield
+    payload = {}
+    for i in range(len(args)):
+        if index and i < index:
+            continue
+        payload['w'] = args[i]
+
+        # post请求
+        logging.info("Post to fm120. Question %d" % i)
+        try:
+            res = sess.get(url, params=payload, verify=False)
+            res.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            logging.info("Request Exception appeared: %s" % e)
+            answer = []
+            answer.append({'topic': str(e),
+                           'correct': ''})
+            index = yield answer
+            continue
+
+        # 处理结果
+        logging.info("Processing result")
+        print(res.text)
+        answer = []
+        temp = {}
+        temp['topic'] = args[i]
+        temp['correct'] = res.text
         logging.info("Yield question %s: %s" % (i+1, answer))
         index = yield answer
 
