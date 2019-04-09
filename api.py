@@ -413,11 +413,12 @@ async def fm210(sess: requests.Session,
 
         # 处理结果
         logging.info("Processing result")
-        print(res.text)
         answer = []
         temp = {}
-        temp['topic'] = args[i]
-        temp['correct'] = res.text
+        temp['topic'] = res.text.split('\n')[1]
+        temp['correct'] = res.text.split('\n')[3]
+        if temp['correct'] != '':
+            answer.append(temp)
         logging.info("Yield question %s: %s" % (i+1, answer))
         index = yield answer
 
