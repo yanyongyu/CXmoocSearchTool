@@ -41,7 +41,7 @@ async def cxmooc_tool(sess: requests.Session,
     # post请求
     logging.info("Post to cxmooc_tool api.")
     try:
-        res = sess.post(url, data=data, verify=False)
+        res = sess.post(url, data=data, verify=False, timeout=5)
         res.raise_for_status()
     except requests.exceptions.RequestException as e:
         logging.info("Request Exception appeared: %s" % e)
@@ -95,7 +95,7 @@ async def poxiaobbs(sess: requests.Session,
         # post请求
         logging.info("Post to poxiao bbs php. Question %d" % i)
         try:
-            res = sess.post(url, data=data, verify=False)
+            res = sess.post(url, data=data, verify=False, timeout=5)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
@@ -152,7 +152,7 @@ async def forestpolice(sess: requests.Session,
         # post请求
         logging.info("Post to forest police. Question %d" % i)
         try:
-            res = sess.post(url + args[i], data=data, verify=False)
+            res = sess.post(url + args[i], data=data, verify=False, timeout=5)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
@@ -211,7 +211,7 @@ async def bankroft(sess: requests.Session,
         # post请求
         logging.info("Get bankroft api. Question %d" % i)
         try:
-            res = sess.get(url, params=payload, verify=False)
+            res = sess.get(url, params=payload, verify=False, timeout=5)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
@@ -264,9 +264,12 @@ async def jiuaidaikan(sess: requests.Session,
     # 接口
     url = "http://www.92daikan.com/tiku.aspx"
 
+    # 接口参数
+    index = yield
+
     # 获取接口参数
     try:
-        res = sess.get(url, verify=False)
+        res = sess.get(url, verify=False, timeout=3)
         res.raise_for_status()
         selector = etree.HTML(res.text)
         viewstate = selector.xpath('//*[@id="__VIEWSTATE"]/@value')
@@ -286,8 +289,6 @@ async def jiuaidaikan(sess: requests.Session,
             yield answer
         raise StopIteration
 
-    # 接口参数
-    index = yield
     data = {}
     data['__VIEWSTATE'] = viewstate
     data['__VIEWSTATEGENERATOR'] = viewstategenerator
@@ -301,7 +302,7 @@ async def jiuaidaikan(sess: requests.Session,
         # post请求
         logging.info("Post to 92daikan. Question %d" % i)
         try:
-            res = sess.post(url, data=data, verify=False)
+            res = sess.post(url, data=data, verify=False, timeout=5)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
@@ -352,7 +353,7 @@ async def wangke120(sess: requests.Session,
         # post请求
         logging.info("Post to wangke120. Question %d" % i)
         try:
-            res = sess.post(url, data=data, verify=False)
+            res = sess.post(url, data=data, verify=False, timeout=5)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
@@ -401,7 +402,7 @@ async def fm210(sess: requests.Session,
         # post请求
         logging.info("Post to fm120. Question %d" % i)
         try:
-            res = sess.get(url, params=payload, verify=False)
+            res = sess.get(url, params=payload, verify=False, timeout=5)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)

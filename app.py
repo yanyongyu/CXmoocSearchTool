@@ -5,7 +5,7 @@ GUI app
 """
 
 __author__ = "yanyongyu"
-__version__ = "1.5"
+__version__ = "1.5.1"
 
 import asyncio
 import logging
@@ -94,7 +94,8 @@ a()
     def show(self):
         "显示主窗口"
         self.root = Tk()
-        self.root.title("超星查题助手 -designed by ShowTime-Joker")
+        self.root.title(
+                "超星查题助手v%s -designed by ShowTime-Joker" % __version__)
         # 窗口居中坐标
         sw = self.root.winfo_screenwidth()
         sh = self.root.winfo_screenheight()
@@ -247,6 +248,8 @@ a()
         frame3.pack(side=BOTTOM, fill=X)
         button1 = Button(frame3, text="查询", command=self.start_search)
         button1.pack(side=LEFT, expand=True)
+#        button2 = Button(frame3, text="一键粘贴", command=self.scan_clipboard)
+#        button2.pack(side=RIGHT, expand=False)
 
         self.root.update()
         self.root.mainloop()
@@ -294,63 +297,79 @@ a()
         Label(frame, text="提示成功即解除成功！部分浏览器可能不支持").pack()
         Button(frame, text="点我复制", command=_copy).pack()
 
+    def scan_clipboard(self):
+        print(self.root.clipboard_get().split('\n'))
+
     def start_search(self):
         "开始搜索，显示答案窗口"
         text = [each.get(1.0, END).strip(' \n\r') for each in self.text]
+        text = list(set(text))
+        try:
+            text.remove('')
+        except ValueError:
+            pass
         logging.info("Text get: %s" % text)
         index = 0
 
-        # 显示toplevel
-        top = Toplevel(self.root)
-        top.geometry('400x300')
-        top.resizable(False, False)
-        top.wm_attributes('-topmost', 1)
+        if text:
+            # 显示toplevel
+            top = Toplevel(self.root)
+            top.geometry('400x300')
+            top.resizable(False, False)
+            top.wm_attributes('-topmost', 1)
 
-        # 根框架
-        frame_root = Frame(top)
-        frame_root.pack(fill=BOTH)
+            # 根框架
+            frame_root = Frame(top)
+            frame_root.pack(fill=BOTH)
 
-        # 上/下一题按钮
-        frame_button = Frame(top)
-        frame_button.pack(side=BOTTOM, fill=X)
-        previous_button = Button(frame_button, text="上一题")
-        previous_button.pack(side=LEFT, expand=True)
-        next_button = Button(frame_button, text="下一题")
-        next_button.pack(side=RIGHT, expand=True)
+            # 上/下一题按钮
+            frame_button = Frame(top)
+            frame_button.pack(side=BOTTOM, fill=X)
+            previous_button = Button(frame_button, text="上一题")
+            previous_button.pack(side=LEFT, expand=True)
+            next_button = Button(frame_button, text="下一题")
+            next_button.pack(side=RIGHT, expand=True)
 
-        frame_list = [self.show_frame(frame_root) for i in range(len(text))]
-        frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
+            frame_list = [self.show_frame(frame_root) for i in range(len(text))]
+            frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
 
-        # 上一题
-        def _previous(event):
-            nonlocal index, frame_list
-            if index > 0:
-                frame_list[index].pack_forget()
-                index -= 1
-                frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
+            # 上一题
+            def _previous(event):
+                nonlocal index, frame_list
+                if index > 0:
+                    frame_list[index].pack_forget()
+                    index -= 1
+                    frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
 
-        # 下一题
-        def _next(event):
-            nonlocal index, frame_list
-            if index < len(frame_list) - 1:
-                frame_list[index].pack_forget()
-                index += 1
-                frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
+            # 下一题
+            def _next(event):
+                nonlocal index, frame_list
+                if index < len(frame_list) - 1:
+                    frame_list[index].pack_forget()
+                    index += 1
+                    frame_list[index].pack(side=TOP, fill=BOTH, expand=True)
 
-        previous_button.bind('<ButtonRelease-1>', _previous)
-        next_button.bind('<ButtonRelease-1>', _next)
+            previous_button.bind('<ButtonRelease-1>', _previous)
+            next_button.bind('<ButtonRelease-1>', _next)
 
-        # 开始搜索线程
-        self.start_coroutine(self.search(frame_list))
+            # 开始搜索线程
+            logging.info("Start search.")
+            self.start_coroutine(self.search(frame_list))
 
     async def search(self, frame_list):
         text = [each.get(1.0, END).strip(' \n\r') for each in self.text]
+        text = list(set(text))
+        try:
+            text.remove('')
+        except ValueError:
+            pass
         # 初始化async迭代器
         generator_list = {}
         for api in self.api_list.keys():
             if self.api_on[api].get():
                 generator_list[api] = self.api_list[api](self.sess, *text)
                 # 启动迭代器
+                logging.info("Active generator %s" % api)
                 await generator_list[api].asend(None)
 
         # 查询答案
@@ -365,7 +384,7 @@ a()
                         label['text'] = label['text'] + '答案:' + answer['correct'] + '\n'
                     break
 
-        # 关闭协程池
+        # 关闭event loop
         loop = asyncio.get_event_loop()
         loop.call_soon_threadsafe(loop.stop)
 
@@ -461,10 +480,12 @@ a()
             for i in range(len(now)):
                 if latest[i] > now[i]:
                     if askyesno(title="超星查题助手",
-                                message="发现新版本！是否前去更新？"):
+                                message="发现新版本%s！是否前去更新？"
+                                % info['tag_name']):
                         webbrowser.open(info['html_url'])
                         if info['assets'][0]['name'].endswith('.exe'):
-                            webbrowser.open(info['assets'][0]['browser_download_url'])
+                            webbrowser.open(
+                                    info['assets'][0]['browser_download_url'])
                     break
         finally:
             loop = asyncio.get_event_loop()
