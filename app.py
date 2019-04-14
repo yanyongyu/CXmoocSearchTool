@@ -5,7 +5,7 @@ GUI app
 """
 
 __author__ = "yanyongyu"
-__version__ = "1.5.1"
+__version__ = "1.5.2"
 
 import asyncio
 import logging
@@ -14,6 +14,7 @@ import threading
 import webbrowser
 
 import requests
+from lxml import etree
 from tkinter import *
 from tkinter.ttk import *
 from tkinter.messagebox import showinfo, askyesno
@@ -66,6 +67,72 @@ var a=function () {
 }
 a()
 """
+    ZHS_JS = """
+function speedUp_muted_bq() {
+
+    $(".speedTab15")[0].click();
+    setTimeout(function() {
+        document.getElementById("vjs_mediaplayer_html5_api").muted = true;
+    }, 1000);
+    $(".line1bq")[0].click();
+}
+
+
+function autoChooseTest() {
+    //check if the test window is open
+    if (!document.getElementById("tmDialog_iframe")) {
+        return;
+    } else {
+        //choose right answer
+        var myradio = document.getElementById("tmDialog_iframe").contentWindow.document.getElementsByClassName("answerOption");
+        for (var i = 0; i < myradio.length; i++) {
+            if (myradio[i].getElementsByTagName("input")[0].getAttribute("_correctanswer") == "1")
+                myradio[i].getElementsByTagName("input")[0].click();
+            //double  click checked;
+            if (myradio[i].getElementsByTagName("input")[0].getAttribute("checked") == "checked")
+                myradio[i].getElementsByTagName("input")[0].click();
+        }
+    }
+
+
+    //close the window of answer
+    for (var i = 0; i < $(".popbtn_cancel span").length; i++) {
+        if ($(".popbtn_cancel span")[i].innerHTML == "关闭" || $(".popbtn_cancel span")[i].innerHTML == "Close") {
+            $(".popbtn_cancel span")[i].click();
+            //console.log($(".popbtn_cancel span")[i].innerHTML);
+        }
+    }
+
+}
+
+function nextVideo() {
+    var video = document.getElementById("vjs_mediaplayer_html5_api");
+    //testTest if it has accelerated
+    if (video.playbackRate != 1.5) {
+        setTimeout(function() {
+            speedUp_muted_bq();
+        }, 1500);
+    }
+    if ((video.currentTime / video.duration) >= 1) {
+        console.log("Finish");
+        $(".tm_next_lesson")[0].click();
+        setTimeout(function() {
+            speedUp_muted_bq();
+        }, 1500);
+    }
+    //If a chapter is finish, test if next video  is as same to the current video
+}
+
+speedUp_muted_bq();
+if (myInterval) {
+    clearInterval(myInterval);
+}
+var myInterval = setInterval(function() {
+    autoChooseTest();
+    console.log(new Date().getSeconds());
+    nextVideo();
+}, 5000);
+"""
 
     def __init__(self):
         # 加载api
@@ -95,7 +162,7 @@ a()
         "显示主窗口"
         self.root = Tk()
         self.root.title(
-                "超星查题助手v%s -designed by ShowTime-Joker" % __version__)
+                "查题助手v%s -designed by ShowTime-Joker" % __version__)
         # 窗口居中坐标
         sw = self.root.winfo_screenwidth()
         sh = self.root.winfo_screenheight()
@@ -132,6 +199,10 @@ a()
                 command=lambda: webbrowser.open(App.PLUGIN_CX_URL)
                 )
         plugin_menu.add_cascade(
+                label="智慧树脚本",
+                command=lambda: self.zhs_js()
+                )
+        plugin_menu.add_cascade(
                 label="解除右键锁定",
                 command=lambda: self.unfreeze_js()
                 )
@@ -141,9 +212,14 @@ a()
         option_menu = Menu(menu, tearoff=0)
         self.isTop = IntVar()
         self.isTop.set(0)
+        self.isBreak = IntVar()
+        self.isBreak.set(0)
         option_menu.add_checkbutton(
                 label="窗口置顶", variable=self.isTop,
                 command=lambda: self.root_top_show()
+                )
+        option_menu.add_checkbutton(
+                label="中断式查询", variable=self.isBreak
                 )
         menu.add_cascade(label="选项", menu=option_menu)
 
@@ -197,13 +273,17 @@ a()
             size = (frame_in.winfo_reqwidth(), frame_in.winfo_reqheight())
             canvas.config(scrollregion="0 0 %s %s" % size)
             if frame_in.winfo_reqwidth() != canvas.winfo_width():
-                # 更新画布大小以适配内部框架
+                # 更新画布宽度以适配内部框架
                 canvas.config(width=frame_in.winfo_reqwidth())
+
             if len(self.text) <= 3:
                 self.root.geometry('%dx%d' % (600, 35 + 70*len(self.text)))
                 canvas.config(height=frame_in.winfo_reqheight())
-                canvas.bind_all('<MouseWheel>', _unscroll_canvas)
-            elif frame_in.winfo_reqheight() < canvas.winfo_height():
+            elif len(self.text) > 3:
+                self.root.geometry('%dx%d' % (600, 35 + 70*3))
+                canvas.config(height=210)
+
+            if frame_in.winfo_reqheight() < canvas.winfo_height():
                 canvas.bind_all('<MouseWheel>', _unscroll_canvas)
             else:
                 canvas.bind_all('<MouseWheel>', _scroll_canvas)
@@ -240,16 +320,43 @@ a()
                                 command=_create_entry)
             add_button.grid(row=1, column=1, padx=2, pady=2)
             self.text.append(text)
+            return text
 
         _create_entry()
+
+        # 超星一键粘贴
+        def _cx_paste():
+            question = self.scan_cx()
+            if not question:
+                showinfo(
+                    title="查题助手",
+                    message="未能检索到题目！\n目前支持html源码粘贴以及【题目类型】特征识别")
+                return
+            for each in question:
+                text = _create_entry()
+                text.insert(1.0, each)
+
+        def _zhs_paste():
+            question = self.scan_zhs()
+            if not question:
+                showinfo(
+                    title="查题助手",
+                    message="未能检索到题目！\n目前支持html源码粘贴以及【题目类型】特征识别")
+                return
+            for each in question:
+                text = _create_entry()
+                text.insert(1.0, each)
+
 
         # 查询按钮框
         frame3 = Frame(self.root, style='White.TFrame')
         frame3.pack(side=BOTTOM, fill=X)
         button1 = Button(frame3, text="查询", command=self.start_search)
         button1.pack(side=LEFT, expand=True)
-#        button2 = Button(frame3, text="一键粘贴", command=self.scan_clipboard)
-#        button2.pack(side=RIGHT, expand=False)
+        button2 = Button(frame3, text="超星粘贴", command=_cx_paste)
+        button2.pack(side=RIGHT, expand=False)
+        button3 = Button(frame3, text="智慧树粘贴", command=_zhs_paste)
+        button3.pack(side=RIGHT, expand=False)
 
         self.root.update()
         self.root.mainloop()
@@ -264,7 +371,7 @@ a()
     def usage(self):
         "显示使用说明窗口"
         top = Toplevel(self.root)
-        top.geometry('350x150')
+        top.geometry('350x250')
         top.resizable(False, False)
         top.wm_attributes('-topmost', 1)
         frame = Frame(top)
@@ -272,10 +379,34 @@ a()
 
         Label(frame, text="复制题目到输入框，一个输入框只能输入一题!").pack()
         Label(frame, text="如需多题查询点击 + 号增加输入框。").pack()
+        Label(frame, text="或直接选择一键粘贴（特征检测【】或html源码）").pack()
+        Label(frame, text="点击查询或使用鼠标中键开始查询").pack()
+        Label(frame, text="非中断式查询会查询所有api但更慢").pack()
         Label(frame, text="本软件自动检测更新").pack()
         Label(frame, text="目前题库包含超星尔雅、知到智慧树。").pack()
         Label(frame, text="如遇到问题请点击帮助-反馈问题").pack()
         Label(frame, text="或点击加入我们加群反馈").pack()
+
+    def zhs_js(self):
+        top = Toplevel(self.root)
+        top.geometry('350x180')
+        top.resizable(False, False)
+        top.wm_attributes('-topmost', 1)
+        frame = Frame(top)
+        frame.pack(fill=BOTH)
+
+        # 复制到剪切板
+        def _copy():
+            self.root.clipboard_clear()
+            self.root.clipboard_append(App.UNFREEZE_JS)
+
+        Label(frame, text="点击复制按钮，到浏览器页面").pack()
+        Label(frame, text="按F12或者Ctrl+Shift+i打开开发者工具").pack()
+        Label(frame, text="切换到Console栏粘贴并回车").pack()
+        Label(frame, text="提示成功即解除成功！部分浏览器可能不支持").pack()
+        Label(frame, text="原项目地址:https://github.com/tignioj/").pack()
+        Label(frame, text="test_login/tree/master/zhs/").pack()
+        Button(frame, text="点我复制", command=_copy).pack()
 
     def unfreeze_js(self):
         "显示解除右键限制说明"
@@ -297,8 +428,37 @@ a()
         Label(frame, text="提示成功即解除成功！部分浏览器可能不支持").pack()
         Button(frame, text="点我复制", command=_copy).pack()
 
-    def scan_clipboard(self):
-        print(self.root.clipboard_get().split('\n'))
+    def scan_cx(self):
+        clipboard_text = self.root.clipboard_get().strip()
+
+        selector = etree.HTML(clipboard_text)
+        cx_html = selector.xpath('//div[@class="clearfix"]')
+        html = list(map(lambda x: x.xpath("string(.)").strip(), cx_html))
+
+        cx_text = clipboard_text.split("\n")
+
+        question = html or cx_text
+
+        raw_question = [each[each.index("】") + 1:]
+                        for each in question if each.find("】") != -1]
+        return raw_question
+
+    def scan_zhs(self):
+        clipboard_text = self.root.clipboard_get().strip()
+
+        selector = etree.HTML(clipboard_text)
+        zhs_html = selector.xpath('//div[@class="subject_describe"]')
+        html = list(map(lambda x: x.xpath("string(.)").strip(), zhs_html))
+
+        zhs_text = clipboard_text.split("\n")
+
+        question = html or zhs_text
+
+        raw_question = [question[i + 1]
+                        for i in range(len(question) - 1)
+                        if question[i].find("】") != -1
+                        if question[i].find(r")") != -1]
+        return raw_question
 
     def start_search(self):
         "开始搜索，显示答案窗口"
@@ -382,7 +542,8 @@ a()
                     for answer in result:
                         label['text'] = label['text'] + answer['topic'] + '\n'
                         label['text'] = label['text'] + '答案:' + answer['correct'] + '\n'
-                    break
+                    if self.isBreak.get():
+                        break
 
         # 关闭event loop
         loop = asyncio.get_event_loop()
@@ -462,7 +623,7 @@ a()
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
             logging.info("Request Exception appeared: %s" % e)
-            showinfo(title="超星查题助手",
+            showinfo(title="查题助手",
                      message="检查更新失败了！")
         else:
             info = res.json()
@@ -470,7 +631,7 @@ a()
             now = __version__.split('.')
             if latest == now:
                 if not silence:
-                    showinfo(title="超星查题助手",
+                    showinfo(title="查题助手",
                              message="已是最新版本！无需更新。")
                 return
             if len(latest) < len(now):
@@ -479,7 +640,7 @@ a()
                 now.append('0')
             for i in range(len(now)):
                 if latest[i] > now[i]:
-                    if askyesno(title="超星查题助手",
+                    if askyesno(title="查题助手",
                                 message="发现新版本%s！是否前去更新？"
                                 % info['tag_name']):
                         webbrowser.open(info['html_url'])
