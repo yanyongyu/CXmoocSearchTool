@@ -40,32 +40,30 @@ class App():
     QQ_URL = "https://jq.qq.com/?_wv=1027&k=5FPg14d"
 
     UNFREEZE_JS = r"""
-var a=function () {
-    var _0x320a = ["body", "onselectstart", "oncopy", "onpaste", "onkeydown", "oncontextmenu", "onmousemove", "ondragstart", "onmousedown", "wrappedJSObject", "*", "getElementsByTagName", "length", "%u5DF2%u89E3%u9664%u590D%u5236%u4E0E%u53F3%u952E%u9650%u5236%uFF01", "\x0D", "%u6B22%u8FCE%u52A0%u5165QQ%u7FA4%u804A%uFF1A614202391", "", "webkitUserSelect", "style", "auto!important", "MozUserSelect", "normal!important"];
-    var doc = document;
-    var bd = doc[_0x320a[0]];
-    bd[_0x320a[1]] = bd[_0x320a[2]] = bd[_0x320a[3]] = bd[_0x320a[4]] = bd[_0x320a[5]] = bd[_0x320a[6]] = bd[_0x320a[1]] = bd[_0x320a[7]] = doc[_0x320a[1]] = doc[_0x320a[2]] = doc[_0x320a[3]] = doc[_0x320a[4]] = doc[_0x320a[5]] = null;
-    doc[_0x320a[1]] = doc[_0x320a[5]] = doc[_0x320a[8]] = doc[_0x320a[4]] = function () {
+(function() {
+    var doc = document,
+    bd = doc.body;
+    bd.onselectstart = bd.oncopy = bd.onpaste = bd.onkeydown = bd.oncontextmenu = bd.onmousemove = bd.onselectstart = bd.ondragstart = doc.onselectstart = doc.oncopy = doc.onpaste = doc.onkeydown = doc.oncontextmenu = null;
+    doc.onselectstart = doc.oncontextmenu = doc.onmousedown = doc.onkeydown = function() {
         return true;
     };
-    with(document[_0x320a[9]] || document) {
+    with (doc.wrappedJSObject || doc) {
         onmouseup = null;
         onmousedown = null;
         oncontextmenu = null;
     };
-    var arAllElements = document[_0x320a[11]](_0x320a[10]);
-    for (var i = arAllElements[_0x320a[12]] - 1; i >= 0; i--) {
-        var elmOne = arAllElements[i];
-        with(elmOne[_0x320a[9]] || elmOne) {
+    var allElements = doc.getElementsByTagName('*');
+    for (var i = allElements.length; i > 0;) {
+        var elmOne = allElements[--i];
+        with (elmOne.wrappedJSObject || elmOne) {
             onmouseup = null;
             onmousedown = null;
         };
     };
-    alert(unescape(_0x320a[13]) + _0x320a[14] + unescape(_0x320a[15]));
-    bd[_0x320a[18]][_0x320a[17]] = _0x320a[19];
-    bd[_0x320a[18]][_0x320a[20]] = _0x320a[21];
-}
-a()
+    alert('已解除复制与右键限制！\n欢迎加入群聊：614202391');
+    bd.style.webkitUserSelect = 'auto!important';
+    bd.style.MozUserSelect = 'normal!important';
+})();
 """
     ZHS_JS = """
 function speedUp_muted_bq() {
@@ -398,7 +396,7 @@ var myInterval = setInterval(function() {
         # 复制到剪切板
         def _copy():
             self.root.clipboard_clear()
-            self.root.clipboard_append(App.UNFREEZE_JS)
+            self.root.clipboard_append(App.ZHS_JS)
 
         Label(frame, text="点击复制按钮，到浏览器页面").pack()
         Label(frame, text="按F12或者Ctrl+Shift+i打开开发者工具").pack()
