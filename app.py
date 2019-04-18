@@ -5,7 +5,7 @@ GUI app
 """
 
 __author__ = "yanyongyu"
-__version__ = "1.5.2"
+__version__ = "1.5.3"
 
 import asyncio
 import logging
@@ -477,7 +477,7 @@ var myInterval = setInterval(function() {
             top.wm_attributes('-topmost', 1)
 
             # 根框架
-            frame_root = Frame(top)
+            frame_root = Frame(top, style="White.TFrame")
             frame_root.pack(fill=BOTH)
 
             # 上/下一题按钮
@@ -521,6 +521,7 @@ var myInterval = setInterval(function() {
             text.remove('')
         except ValueError:
             pass
+
         # 初始化async迭代器
         generator_list = {}
         for api in self.api_list.keys():
@@ -532,16 +533,20 @@ var myInterval = setInterval(function() {
 
         # 查询答案
         for i in range(len(text)):
-            label = frame_list[i].children['!canvas'].children['!frame'].children['!label']
+            label = frame_list[i].children['!text']
+            label.configure(state="normal")
             for generator in generator_list.keys():
-                label['text'] = label['text'] + "查询中。。。使用源%s\n" % generator
+                label.insert(END, f"查询中。。。使用源{generator}\n")
+                label.configure(state="disable")
                 result = await generator_list[generator].asend(i)
+                label.configure(state="normal")
                 if result and result[0]['correct']:
                     for answer in result:
-                        label['text'] = label['text'] + answer['topic'] + '\n'
-                        label['text'] = label['text'] + '答案:' + answer['correct'] + '\n'
+                        label.insert(END, f"{answer['topic']}\n")
+                        label.insert(END, f"答案:{answer['correct']}\n")
                     if self.isBreak.get():
                         break
+        label.configure(state="disable")
 
         # 关闭event loop
         loop = asyncio.get_event_loop()
@@ -551,52 +556,79 @@ var myInterval = setInterval(function() {
         # 总体框架
         frame_out = Frame(frame_root)
 
-        # 显示画布
-        canvas = Canvas(frame_out)
-        canvas.pack(side=LEFT, fill=BOTH, expand=True)
-        # 内容框架
-        frame = Frame(canvas)
-        frame_id = canvas.create_window(0, 0, window=frame, anchor=NW)
-        # 内容标签
-        label1 = Label(frame, text="", wraplength=380)
-        label1.pack(side=TOP, fill=BOTH)
-
-        # 动态隐藏滚动条
+        text = Text(frame_out, width=30, height=12,
+                    font=('微软雅黑', 12), state="disable")
+        text.pack(fill=BOTH, side=LEFT, expand=True)
         vbar = AutoShowScrollbar(frame_out, orient=VERTICAL)
         vbar.pack(fill=Y, side=RIGHT, expand=False)
 
-        # 互相绑定滚动
-        vbar.config(command=canvas.yview)
-        canvas.configure(yscrollcommand=vbar.set)
+        vbar.configure(command=text.yview)
+        text.configure(yscrollcommand=vbar.set)
 
         # 界面鼠标滚动函数
-        def _scroll_canvas(event):
-            canvas.yview_scroll(int(-event.delta / 60), 'units')
+        def _scroll_text(event):
+            text.yview_scroll(int(-event.delta / 60), 'units')
 
-        def _unscroll_canvas(event):
-            return 'break'
+#        # 内容框架大小适配
+#        def _configure_frame(event):
+#            if frame_root.winfo_width() != frame_out.winfo_reqwidth():
+#                print(frame_out.winfo_reqwidth(), frame_out.winfo_width())
+#                print(text.winfo_reqwidth(), text.winfo_width())
+#                frame_out.configure(width=frame_root.winfo_width())
+#                print(frame_out.winfo_reqwidth(), frame_out.winfo_width())
+#                print(text.winfo_reqwidth(), text.winfo_width())
+#
+#        frame_out.bind_all("<Configure>", _configure_frame)
+        frame_out.bind_all("<MouseWheel>", _scroll_text)
 
-        # 内容框架大小适配
-        def _configure_frame(event):
-            # 更新画布的滚动范围以适配内部框架
-            size = (frame.winfo_reqwidth(), frame.winfo_reqheight())
-            canvas.config(scrollregion="0 0 %s %s" % size)
-            if frame.winfo_reqwidth() != canvas.winfo_width():
-                # 更新画布大小以适配内部框架
-                canvas.config(width=frame.winfo_reqwidth())
-            if frame.winfo_reqheight() < canvas.winfo_height():
-                canvas.bind_all('<MouseWheel>', _unscroll_canvas)
-            else:
-                canvas.bind_all('<MouseWheel>', _scroll_canvas)
-
-        def _configure_canvas(event):
-            if frame.winfo_reqwidth() != canvas.winfo_width():
-                # 更新内部框架大小以适配画布大小
-                canvas.itemconfigure(frame_id, width=canvas.winfo_width())
-
-        frame.bind('<Configure>', _configure_frame)
-        canvas.bind('<Configure>', _configure_canvas)
-        canvas.bind_all('<MouseWheel>', _scroll_canvas)
+# =============================================================================
+#         # 显示画布
+#         canvas = Canvas(frame_out)
+#         canvas.pack(side=LEFT, fill=BOTH, expand=True)
+#         # 内容框架
+#         frame = Frame(canvas)
+#         frame_id = canvas.create_window(0, 0, window=frame, anchor=NW)
+#         # 内容标签
+#         label1 = Label(frame, text="", wraplength=380)
+#         label1.pack(side=TOP, fill=BOTH)
+#
+#         # 动态隐藏滚动条
+#         vbar = AutoShowScrollbar(frame_out, orient=VERTICAL)
+#         vbar.pack(fill=Y, side=RIGHT, expand=False)
+#
+#         # 互相绑定滚动
+#         vbar.config(command=canvas.yview)
+#         canvas.configure(yscrollcommand=vbar.set)
+#
+#         # 界面鼠标滚动函数
+#         def _scroll_canvas(event):
+#             canvas.yview_scroll(int(-event.delta / 60), 'units')
+#
+#         def _unscroll_canvas(event):
+#             return 'break'
+#
+#         # 内容框架大小适配
+#         def _configure_frame(event):
+#             # 更新画布的滚动范围以适配内部框架
+#             size = (frame.winfo_reqwidth(), frame.winfo_reqheight())
+#             canvas.config(scrollregion="0 0 %s %s" % size)
+#             if frame.winfo_reqwidth() != canvas.winfo_width():
+#                 # 更新画布大小以适配内部框架
+#                 canvas.config(width=frame.winfo_reqwidth())
+#             if frame.winfo_reqheight() < canvas.winfo_height():
+#                 canvas.bind_all('<MouseWheel>', _unscroll_canvas)
+#             else:
+#                 canvas.bind_all('<MouseWheel>', _scroll_canvas)
+#
+#         def _configure_canvas(event):
+#             if frame.winfo_reqwidth() != canvas.winfo_width():
+#                 # 更新内部框架大小以适配画布大小
+#                 canvas.itemconfigure(frame_id, width=canvas.winfo_width())
+#
+#         frame.bind('<Configure>', _configure_frame)
+#         canvas.bind('<Configure>', _configure_canvas)
+#         canvas.bind_all('<MouseWheel>', _scroll_canvas)
+# =============================================================================
 
         return frame_out
 
