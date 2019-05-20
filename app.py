@@ -546,6 +546,7 @@ var myInterval = setInterval(function() {
                         label.insert(END, f"答案:{answer['correct']}\n")
                     if self.isBreak.get():
                         break
+            label.insert(END, "查询完毕！")
         label.configure(state="disable")
 
         # 关闭event loop

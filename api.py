@@ -416,10 +416,14 @@ async def fm210(sess: requests.Session,
         logging.info("Processing result")
         answer = []
         temp = {}
-        temp['topic'] = res.text.split('\n')[1]
-        temp['correct'] = res.text.split('\n')[3]
-        if temp['correct'] != '':
-            answer.append(temp)
+        try:
+            temp['topic'] = res.text.split('\n')[1]
+            temp['correct'] = res.text.split('\n')[3]
+            if temp['correct'] != '':
+                answer.append(temp)
+        except IndexError:
+            pass
+
         logging.info("Yield question %s: %s" % (i+1, answer))
         index = yield answer
 
