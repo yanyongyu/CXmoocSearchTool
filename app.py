@@ -5,7 +5,7 @@ GUI app
 """
 
 __author__ = "yanyongyu"
-__version__ = "1.5.3"
+__version__ = "1.5.4"
 
 import asyncio
 import logging
