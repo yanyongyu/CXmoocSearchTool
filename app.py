@@ -437,6 +437,8 @@ var myInterval = setInterval(function() {
 
         question = html or cx_text
 
+        print(question)
+
         raw_question = [each[each.index("】") + 1:]
                         for each in question if each.find("】") != -1]
         return raw_question
@@ -461,7 +463,8 @@ var myInterval = setInterval(function() {
     def start_search(self):
         "开始搜索，显示答案窗口"
         text = [each.get(1.0, END).strip(' \n\r') for each in self.text]
-        text = list(set(text))
+        text_out_of_order = list(set(text))
+        text = sorted(text_out_of_order, key=text.index)
         try:
             text.remove('')
         except ValueError:
@@ -516,7 +519,8 @@ var myInterval = setInterval(function() {
 
     async def search(self, frame_list):
         text = [each.get(1.0, END).strip(' \n\r') for each in self.text]
-        text = list(set(text))
+        text_out_of_order = list(set(text))
+        text = sorted(text_out_of_order, key=text.index)
         try:
             text.remove('')
         except ValueError:
@@ -542,8 +546,8 @@ var myInterval = setInterval(function() {
                 label.configure(state="normal")
                 if result and result[0]['correct']:
                     for answer in result:
-                        label.insert(END, f"{answer['topic']}\n")
-                        label.insert(END, f"答案:{answer['correct']}\n")
+                        label.insert(END, f"{answer['topic'].strip()}\n")
+                        label.insert(END, f"答案:{answer['correct'].strip()}\n")
                     if self.isBreak.get():
                         break
             label.insert(END, "查询完毕！")
@@ -557,9 +561,10 @@ var myInterval = setInterval(function() {
         # 总体框架
         frame_out = Frame(frame_root)
 
-        text = Text(frame_out, width=30, height=12,
-                    font=('微软雅黑', 12), state="disable")
+        text = Text(frame_out, width=30, height=12, font=('微软雅黑', 12))
         text.pack(fill=BOTH, side=LEFT, expand=True)
+        text.insert(END, "正在等待查询。。。\n")
+        text.configure(state="disable")
         vbar = AutoShowScrollbar(frame_out, orient=VERTICAL)
         vbar.pack(fill=Y, side=RIGHT, expand=False)
 
