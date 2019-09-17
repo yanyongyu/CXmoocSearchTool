@@ -29,7 +29,7 @@ async def cxmooc_tool(sess: requests.Session,
         sess = requests.Session()
 
     # 接口
-    url = "https://blog.icodef.com:8081/v2/answer"
+    url = "https://cx.icodef.com/v2/answer"
 
     # 接口参数
     index = yield
@@ -296,9 +296,11 @@ async def www150s(sess: requests.Session,
         res = res.json()
         answer = []
         temp = {}
-        temp['topic'] = res['title']
-        temp['correct'] = res['answer']
-        if temp['topic'] != "查无此题，请您换一道题查询！":
+        for each in res:
+            temp['topic'] = each['title']
+            temp['correct'] = each['answer']
+            if temp['topic'] == "查无此题，请您换一道题查询！":
+                break
             answer.append(temp)
         logging.info("Yield question %s: %s" % (i+1, answer))
         index = yield answer

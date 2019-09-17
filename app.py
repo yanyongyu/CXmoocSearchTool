@@ -542,7 +542,10 @@ var myInterval = setInterval(function() {
             for generator in generator_list.keys():
                 label.insert(END, f"查询中。。。使用源{generator}\n")
                 label.configure(state="disable")
-                result = await generator_list[generator].asend(i)
+                try:
+                    result = await generator_list[generator].asend(i)
+                except Exception as e:
+                    logging.error(repr(e))
                 label.configure(state="normal")
                 if result and result[0]['correct']:
                     for answer in result:
