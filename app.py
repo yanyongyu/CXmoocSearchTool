@@ -277,7 +277,7 @@ var myInterval = setInterval(function() {
             if len(self.text) <= 3:
                 self.root.geometry('%dx%d' % (600, 35 + 70*len(self.text)))
                 canvas.config(height=frame_in.winfo_reqheight())
-            elif len(self.text) > 3:
+            else:
                 self.root.geometry('%dx%d' % (600, 35 + 70*3))
                 canvas.config(height=210)
 
@@ -439,9 +439,11 @@ var myInterval = setInterval(function() {
 
         print(question)
 
-        raw_question = [each[each.index("】") + 1:]
-                        for each in question if each.find("】") != -1]
-        return raw_question
+        return [
+            each[each.index("】") + 1 :]
+            for each in question
+            if each.find("】") != -1
+        ]
 
     def scan_zhs(self):
         clipboard_text = self.root.clipboard_get().strip()
@@ -454,11 +456,12 @@ var myInterval = setInterval(function() {
 
         question = html or zhs_text
 
-        raw_question = [question[i + 1]
-                        for i in range(len(question) - 1)
-                        if question[i].find("】") != -1
-                        if question[i].find(r")") != -1]
-        return raw_question
+        return [
+            question[i + 1]
+            for i in range(len(question) - 1)
+            if question[i].find("】") != -1
+            if question[i].find(r")") != -1
+        ]
 
     def start_search(self):
         "开始搜索，显示答案窗口"
@@ -532,14 +535,14 @@ var myInterval = setInterval(function() {
             if self.api_on[api].get():
                 generator_list[api] = self.api_list[api](self.sess, *text)
                 # 启动迭代器
-                logging.info("Active generator %s" % api)
+                logging.info(f"Active generator {api}")
                 await generator_list[api].asend(None)
 
         # 查询答案
         for i in range(len(text)):
             label = frame_list[i].children['!text']
             label.configure(state="normal")
-            for generator in generator_list.keys():
+            for generator in generator_list:
                 label.insert(END, f"查询中。。。使用源{generator}\n")
                 label.configure(state="disable")
                 try:
@@ -661,7 +664,7 @@ var myInterval = setInterval(function() {
             res = self.sess.get(URL)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
-            logging.info("Request Exception appeared: %s" % e)
+            logging.info(f"Request Exception appeared: {e}")
             showinfo(title="查题助手",
                      message="检查更新失败了！")
         else:
@@ -679,9 +682,9 @@ var myInterval = setInterval(function() {
                 now.append('0')
             for i in range(len(now)):
                 if latest[i] > now[i]:
-                    if askyesno(title="查题助手",
-                                message="发现新版本%s！是否前去更新？"
-                                % info['tag_name']):
+                    if askyesno(
+                        title="查题助手", message=f"发现新版本{info['tag_name']}！是否前去更新？"
+                    ):
                         webbrowser.open(info['html_url'])
                         if info['assets'][0]['name'].endswith('.exe'):
                             webbrowser.open(

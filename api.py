@@ -33,40 +33,33 @@ async def cxmooc_tool(sess: requests.Session,
 
     # 接口参数
     index = yield
-    data = {}
-    for i in range(len(args)):
-        data['topic[%d]' % i] = args[i]
-
+    data = {'topic[%d]' % i: args[i] for i in range(len(args))}
     # post请求
     logging.info("Post to cxmooc_tool api.")
     try:
         res = sess.post(url, data=data, verify=False, timeout=5)
         res.raise_for_status()
     except requests.exceptions.RequestException as e:
-        logging.info("Request Exception appeared: %s" % e)
+        logging.info(f"Request Exception appeared: {e}")
+        answer = [{'topic': str(e), 'correct': ''}]
         for each in args:
-            answer = []
-            answer.append({'topic': str(e),
-                           'correct': ''})
             yield answer
         raise StopIteration
 
     # 处理结果
     logging.info("Processing result")
-    result = [[] for i in range(len(args))]
+    result = [[] for _ in range(len(args))]
     for each in res.json():
         for answ in each['result']:
-            temp = {}
-            temp['topic'] = answ['topic']
-            temp['correct'] = ''
+            temp = {'topic': answ['topic'], 'correct': ''}
             for option in answ['correct']:
-                temp['correct'] = temp['correct'] + str(option['option'])
+                temp['correct'] += str(option['option'])
             result[each['index']].append(temp)
 
     for i in range(len(result)):
         if index and i < index:
             continue
-        logging.info("Yield question %s: %s" % (i+1, result[i]))
+        logging.info(f"Yield question {i + 1}: {result[i]}")
         index = yield result[i]
     raise StopIteration
 
@@ -99,23 +92,19 @@ async def forestpolice(sess: requests.Session,
             res = sess.post(url + args[i], data=data, verify=False, timeout=5)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
-            logging.info("Request Exception appeared: %s" % e)
-            answer = []
-            answer.append({'topic': str(e),
-                           'correct': ''})
+            logging.info(f"Request Exception appeared: {e}")
+            answer = [{'topic': str(e), 'correct': ''}]
             index = yield answer
             continue
 
         # 处理结果
         logging.info("Processing result")
         answer = []
-        temp = {}
-        temp['topic'] = args[i]
-        temp['correct'] = res.json()['data']
+        temp = {'topic': args[i], 'correct': res.json()['data']}
         if temp['correct'] != '未找到答案':
             answer.append(temp)
 
-        logging.info("Yield question %s: %s" % (i+1, answer))
+        logging.info(f"Yield question {i + 1}: {answer}")
         index = yield answer
 
         await asyncio.sleep(0.5)
@@ -150,21 +139,20 @@ async def jiuaidaikan(sess: requests.Session,
         eventvalidation = selector.xpath(
             '//*[@id="__EVENTVALIDATION"]/@value')
     except requests.exceptions.RequestException as e:
-        logging.info("Request Exception appeared: %s" % e)
+        logging.info(f"Request Exception appeared: {e}")
         index = yield
         for i in range(len(args)):
             if index and i < index:
                 continue
-            answer = []
-            answer.append({'topic': str(e),
-                           'correct': ''})
-            yield answer
+            yield [{'topic': str(e), 'correct': ''}]
         raise StopIteration
 
-    data = {}
-    data['__VIEWSTATE'] = viewstate
-    data['__EVENTVALIDATION'] = eventvalidation
-    data['ctl00$ContentPlaceHolder1$gen'] = '查询'
+    data = {
+        '__VIEWSTATE': viewstate,
+        '__EVENTVALIDATION': eventvalidation,
+        'ctl00$ContentPlaceHolder1$gen': '查询',
+    }
+
     for i in range(len(args)):
         if index and i < index:
             continue
@@ -176,10 +164,8 @@ async def jiuaidaikan(sess: requests.Session,
             res = sess.post(url, data=data, verify=False, timeout=5)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
-            logging.info("Request Exception appeared: %s" % e)
-            answer = []
-            answer.append({'topic': str(e),
-                           'correct': ''})
+            logging.info(f"Request Exception appeared: {e}")
+            answer = [{'topic': str(e), 'correct': ''}]
             index = yield answer
             continue
 
@@ -187,13 +173,15 @@ async def jiuaidaikan(sess: requests.Session,
         logging.info("Processing result")
         answer = []
         selector = etree.HTML(res.text)
-        temp = {}
-        temp['topic'] = args[i]
-        temp['correct'] = selector.xpath('//*[@id="daan"]/text()')[0]
+        temp = {
+            'topic': args[i],
+            'correct': selector.xpath('//*[@id="daan"]/text()')[0],
+        }
+
         if temp['correct'] != '未找到答案':
             answer.append(temp)
 
-        logging.info("Yield question %s: %s" % (i+1, answer))
+        logging.info(f"Yield question {i + 1}: {answer}")
         index = yield answer
 
         await asyncio.sleep(0.5)
@@ -212,9 +200,7 @@ async def xuanxiu365(sess: requests.Session,
 
     # 接口
     url = "http://tiku.xuanxiu365.com/admin/admin/api.html"
-    header = {}
-    header['X-Requested-With'] = "XMLHttpRequest"
-
+    header = {'X-Requested-With': "XMLHttpRequest"}
     # 接口参数
     index = yield
     payload = {}
@@ -230,10 +216,8 @@ async def xuanxiu365(sess: requests.Session,
                            verify=False, timeout=5)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
-            logging.info("Request Exception appeared: %s" % e)
-            answer = []
-            answer.append({'topic': str(e),
-                           'correct': ''})
+            logging.info(f"Request Exception appeared: {e}")
+            answer = [{'topic': str(e), 'correct': ''}]
             index = yield answer
             continue
 
@@ -242,11 +226,9 @@ async def xuanxiu365(sess: requests.Session,
         res = res.json()
         answer = []
         if res['data']:
-            temp = {}
-            temp['topic'] = res['data']['title']
-            temp['correct'] = res['data']['content']
+            temp = {'topic': res['data']['title'], 'correct': res['data']['content']}
             answer.append(temp)
-        logging.info("Yield question %s: %s" % (i+1, answer))
+        logging.info(f"Yield question {i + 1}: {answer}")
         index = yield answer
 
         await asyncio.sleep(0.5)
@@ -284,10 +266,8 @@ async def www150s(sess: requests.Session,
                            verify=False, timeout=5)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
-            logging.info("Request Exception appeared: %s" % e)
-            answer = []
-            answer.append({'topic': str(e),
-                           'correct': ''})
+            logging.info(f"Request Exception appeared: {e}")
+            answer = [{'topic': str(e), 'correct': ''}]
             index = yield answer
             continue
 
@@ -302,7 +282,7 @@ async def www150s(sess: requests.Session,
             if temp['topic'] == "查无此题，请您换一道题查询！":
                 break
             answer.append(temp)
-        logging.info("Yield question %s: %s" % (i+1, answer))
+        logging.info(f"Yield question {i + 1}: {answer}")
         index = yield answer
 
         await asyncio.sleep(0.5)
@@ -336,11 +316,9 @@ async def wangkebang(sess: requests.Session,
             res = sess.post(url, data=data, verify=False, timeout=5)
             res.raise_for_status()
         except requests.exceptions.RequestException as e:
-            logging.info("Request Exception appeared: %s" % e)
+            logging.info(f"Request Exception appeared: {e}")
             for each in args:
-                answer = []
-                answer.append({'topic': str(e),
-                               'correct': ''})
+                answer = [{'topic': str(e), 'correct': ''}]
                 yield answer
             raise StopIteration
 
@@ -349,17 +327,19 @@ async def wangkebang(sess: requests.Session,
         res.encoding = 'utf-8'
         answer = []
         selector = etree.HTML(res.text)
-        temp = {}
-        temp['topic'] = selector.xpath(
-            '/html/body/div[3]/div[1]/div/span[1]/strong/text()'
-        )[0].lstrip(" 题目:\n")
+        temp = {
+            'topic': selector.xpath(
+                '/html/body/div[3]/div[1]/div/span[1]/strong/text()'
+            )[0].lstrip(" 题目:\n")
+        }
+
         temp['correct'] = selector.xpath(
             '/html/body/div[3]/div[1]/div/span[2]/strong/text()'
         )[0].lstrip(" 答案:\n")
         if temp['topic'] != '啊哦暂无该题':
             answer.append(temp)
 
-        logging.info("Yield question %s: %s" % (i+1, answer))
+        logging.info(f"Yield question {i + 1}: {answer}")
         index = yield answer
 
         await asyncio.sleep(0.5)
@@ -597,13 +577,11 @@ async def wangkebang(sess: requests.Session,
 async def cmd():
     # 获取所有api
     api_list = {}
-    for each in globals().keys():
+    for each, fn in globals().items():
         if each.startswith('_'):
             continue
-        fn = globals()[each]
-        if callable(fn):
-            if getattr(fn, '__annotations__', None):
-                api_list[each] = fn
+        if callable(fn) and getattr(fn, '__annotations__', None):
+            api_list[each] = fn
 
     args = sys.argv[1:]
     if not args or "-h" in args:
@@ -611,7 +589,7 @@ async def cmd():
         print("\t-h\tPrint help")
         print("\t-json\tReturn json data at last")
         print("\t-api\tUsing the specified api\n\t\tapi list:")
-        for each in api_list.keys():
+        for each in api_list:
             print("\t\t\t%s" % each)
         print("\t-text\tquestion(-text can be used more than one time)")
     else:
@@ -632,15 +610,15 @@ async def cmd():
             elif each.startswith("-text="):
                 text.append(each[6:])
             else:
-                ValueError("Unknow option %s. Use -h for help"
-                           % each.split("=")[0])
+                ValueError(f'Unknow option {each.split("=")[0]}. Use -h for help')
 
         # 获取答案
-        answer = [[] for i in range(len(text))]
+        answer = [[] for _ in range(len(text))]
         if not search:
-            for each in api_list.keys():
-                remain = [text[i] for i in range(len(text)) if not answer[i]]
-                if remain:
+            for each in api_list:
+                if remain := [
+                    text[i] for i in range(len(text)) if not answer[i]
+                ]:
                     generator = api_list[each](*remain)
                     await generator.asend(None)
                     for i in range(len(text)):
@@ -649,16 +627,13 @@ async def cmd():
                             continue
                         else:
                             answer[i] = result
-        else:
-            if text:
-                generator = search(*text)
-                await generator.asend(None)
-                for i in range(len(text)):
-                    result = await generator.asend(None)
-                    if not result or not result[0]['correct']:
-                        continue
-                    else:
-                        answer[i] = result
+        elif text:
+            generator = search(*text)
+            await generator.asend(None)
+            for i in range(len(text)):
+                result = await generator.asend(None)
+                if result and result[0]['correct']:
+                    answer[i] = result
 
         if not JSON:
             print(answer)
